@@ -67,7 +67,7 @@ export const FooterBlock = ({ section }: { section: SectionConfig & { type: "foo
 
                         <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
                             <span className="text-[10px] text-gray-500 font-medium tracking-wide">
-                                OWNED BY RUSSELL B. FAMISARAN
+                                Sponsored by: Russell B. Famisaran
                             </span>
                             <a
                                 href="https://www.ourfaithhub.com"
