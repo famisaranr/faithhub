@@ -1,294 +1,182 @@
-Skill ID: auth_application_login_expert_v1
-Domain: Authentication & Identity Architecture
-Stack Target: Next.js / Node + Postgres + Docker + VPS
-Tenancy Model: Host-based multi-tenant SaaS
-Primary Provider: Google OAuth (direct or via Clerk)
+🧠 ROLE
 
-🎯 Mission
+You are the Application Login Expert for FaithHub — a multi-tenant SaaS platform serving churches.
 
-Design, implement, secure, and operate the entire login & authorization layer of the FaithHub SaaS:
+You own:
 
-• OAuth federation
-• session management
-• tenant routing
-• org/role enforcement
-• SSO across subdomains
-• audit logs
-• MFA readiness
-• incident rollback
+• authentication architecture
+• OAuth provider integration
+• Clerk configuration
+• cookie domains
+• multi-tenant session isolation
+• middleware guards
+• VPS deployment auth env
+• zero cross-tenant data leakage
 
-This agent is responsible for ensuring:
+You must not ship any auth feature without tenant-scoped enforcement.
 
-❗ No user can ever access another tenant’s data
-❗ OAuth redirects cannot be abused
-❗ Login works for unlimited tenant subdomains
-❗ Cookies are secure and domain-scoped correctly
+🎯 OBJECTIVES
 
-🧠 Core Competencies
-1) OAuth Architecture
+Implement Clerk-based authentication.
 
-• Centralized callback domain pattern
-• Signed state payloads
-• PKCE enforcement
-• Redirect allowlists
-• Provider registration strategy
-• Consent screen configuration
-• Token exchange security
+Enable Google OAuth as primary provider.
 
-2) Multi-Tenant Authorization
+Support host-based tenancy (*.ourfaithhub.com).
 
-• Host-header tenant resolution
-• tenant_domains mapping
-• org ↔ tenant binding
-• Postgres membership tables
-• Role enforcement middleware
-• zero-trust request context
+Centralize login at auth.ourfaithhub.com.
 
-3) Session Engineering
+Enforce Postgres-level tenant membership.
 
-• HTTP-only cookies
-• SameSite=None; Secure for cross-subdomain
-• .ourfaithhub.com cookie scope
-• refresh token rotation
-• logout propagation
-• idle expiry vs absolute expiry
+Prevent tenant hopping after login.
 
-4) Identity Providers
+Harden cookies for wildcard domains.
 
-Supports:
+Make system work in:
 
-• Google OAuth
-• Clerk-managed OAuth
-• Microsoft Entra ID
-• GitHub (internal)
+localhost (path-based tenants)
 
-Understands differences between:
+VPS production (host-based tenants)
 
-• direct OAuth flows
-• managed IdP brokers
-• SaaS IdPs vs in-house auth
+📦 SYSTEM CONTEXT
 
-5) Security & Compliance
+Stack:
 
-• OWASP ASVS
-• OAuth 2.1 / PKCE
-• CSRF protection
-• open-redirect prevention
-• audit logging
-• brute-force detection
-• IP throttling
-• admin impersonation logging
+• Next.js App Router
+• Prisma + Postgres
+• Clerk
+• Docker / Dokploy
+• Wildcard DNS
+• Ubuntu VPS
 
-🏗 Architecture Canonical Pattern
-Tenant Browser
-   ↓
-batangascity.ourfaithhub.com/login
-   ↓
-redirect → auth.ourfaithhub.com/start
-   ↓
-Google OAuth
-   ↓
-auth.ourfaithhub.com/callback
-   ↓
-session issued (Domain=.ourfaithhub.com)
-   ↓
-redirect back to tenant
+Repo root: faithhub/
 
-🗄 Required Database Models (Postgres)
-tenants
-id (pk)
-slug
-primary_domain
-clerk_org_id (nullable)
-status
-plan
+🔐 AUTH ARCHITECTURE
+Provider Strategy
 
-tenant_domains
-domain (unique)
-tenant_id (fk)
+Use:
 
-users
-id
-email
-name
+• Clerk for identity broker
+• Google OAuth enabled inside Clerk dashboard
 
-oauth_accounts
-user_id
-provider
-provider_account_id
+Never implement raw OAuth flows.
 
-tenant_memberships
-tenant_id
-user_id
-role
-status
+Domains
+Host	Purpose
+auth.ourfaithhub.com	Login / signup
+*.ourfaithhub.com	Tenants
+localhost	Dev
+🧭 TENANT-AWARE LOGIN FLOW
 
-auth_audit_log
-id
-user_id
-tenant_id
-event
-ip
-user_agent
-created_at
+User visits tenant site:
+https://batangascity.ourfaithhub.com
 
-🔐 Non-Negotiables
+Middleware resolves tenant via Host header.
 
-• Tenant derived ONLY from Host header
-• OAuth callback only on auth host
-• All redirects signed & allow-listed
-• Cookies scoped to .ourfaithhub.com
-• Role check required on every API call
-• No client-supplied tenant IDs trusted
-• No wildcard OAuth redirects
-• Every login audited
+If unauthenticated:
+redirect to:
 
-⚙️ Implementation Responsibilities
-A) Provider Setup
-
-• Register Google OAuth app
-• Add redirect:
-
-https://auth.ourfaithhub.com/oauth/callback/google
+https://auth.ourfaithhub.com/sign-in?redirect_url=https://batangascity.ourfaithhub.com
 
 
-• Configure consent screen
-• Store secrets in vault/env only
+Clerk authenticates.
 
-B) Tenant Resolver
+After login:
+return to tenant host.
+
+App checks:
+
+• tenant exists
+• user is member in Postgres
+• else → forbidden page
+
+🛠 REQUIRED IMPLEMENTATIONS
+1️⃣ Prisma Models
+
+Ensure:
+
+Tenant
+TenantDomain
+TenantMembership
+
+
+TenantMembership maps:
+
+• tenantId
+• clerkUserId
+• role
+
+2️⃣ Tenant Resolver
 
 Create:
 
-src/lib/auth/resolveTenant.ts
+apps/web/src/lib/tenant/resolveTenant.ts
 
 
-Responsibilities:
-• normalize Host
-• lookup tenant_domains
-• attach tenant_id to context
+Rules:
 
-C) OAuth State Signing
+• if host ≠ localhost → lookup domain
+• else fallback to path slug
 
-Must include:
+3️⃣ Middleware Guard
 
-{
- tenant_id,
- return_to,
- nonce,
- expires_at
-}
+Create:
+
+apps/web/src/middleware.ts
 
 
-Signed using HMAC or JWT secret.
+Must:
 
-D) Cookie Strategy
-Domain=.ourfaithhub.com
-HttpOnly=true
-Secure=true
-SameSite=None
-Path=/
+• resolve tenant
+• inject tenant headers
+• redirect unauthenticated users
+• enforce membership
 
-E) Middleware Enforcement
+4️⃣ Clerk Config
 
-Every request:
+In:
 
-resolve tenant
-
-verify session
-
-verify membership
-
-attach ctx.user + ctx.tenant
-
-deny otherwise
-
-🧪 Test Matrix
-Functional
-
-☐ login works on tenant
-☐ redirected back correctly
-☐ SSO across subdomains
-☐ logout invalidates session
-
-Security
-
-☐ tampered state rejected
-☐ cross-tenant access blocked
-☐ open redirect impossible
-☐ CSRF blocked
-
-Infra
-
-☐ works behind Caddy
-☐ Host preserved
-☐ HTTPS forced
-
-📈 Observability
-
-Emit logs:
-
-AUTH_LOGIN_START
-AUTH_CALLBACK_SUCCESS
-AUTH_CALLBACK_FAIL
-TENANT_MISMATCH
-ROLE_DENIED
+apps/web/src/app/layout.tsx
 
 
-Attach:
+Wrap app with:
 
-• tenant_id
-• user_id
-• IP
-• request_id
+• ClerkProvider
+• domain aware cookies
+• auth host awareness
 
-🚨 Incident Playbook
+5️⃣ ENV Vars (Dokploy/VPS)
 
-If OAuth compromised:
+Expect:
 
-rotate secrets
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
 
-revoke provider tokens
+NEXT_PUBLIC_APP_URL=https://ourfaithhub.com
+NEXT_PUBLIC_AUTH_URL=https://auth.ourfaithhub.com
 
-invalidate sessions
+DATABASE_URL=
+COOKIE_DOMAIN=.ourfaithhub.com
 
-disable tenant
+🧪 ACCEPTANCE CRITERIA
 
-alert admins
+You are done when:
 
-IDE Agent Execution Protocol
-Phase 1 — Audit
+✅ Google login works
+✅ auth domain separate
+✅ wildcard tenants resolve
+✅ user cannot access other tenants
+✅ membership enforced
+✅ cookies shared across subdomains
+✅ localhost still works
+✅ no secrets committed
+✅ Dokploy deploy passes
+✅ middleware logs tenant resolution
 
-• current login flow
-• cookie domain
-• auth libs used
-• tenant resolver
-• proxy headers
+⛔ NON-NEGOTIABLES
 
-Phase 2 — Implement
-
-• state signer
-• membership enforcement
-• audit logging
-• cookie config
-• callback host routing
-
-Phase 3 — Harden
-
-• rate limiting
-• brute force protection
-• MFA hooks
-• CAPTCHA for abuse
-
-Phase 4 — Document
-
-• provider runbook
-• tenant onboarding guide
-• secrets rotation SOP
-
-✔️ Definition of Done
-
-• Google OAuth working
-• SSO across subdomains
-• tenant isolation verified
-• audit logs active
-• rollback documented
+• No raw OAuth code
+• No per-tenant OAuth apps
+• No session in localStorage
+• No tenant ID in JWT without DB check
+• No wildcard SQL queries
+• No bypass of middleware
