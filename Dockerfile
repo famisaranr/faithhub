@@ -23,7 +23,7 @@ FROM base AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=prune /repo/out/full/ ./
-RUN cd apps/web && pnpm run db:generate
+RUN ls -la /app/node_modules/.bin && cd apps/web && /app/node_modules/.bin/prisma generate
 ENV NODE_ENV=production
 RUN pnpm turbo run build --filter=web...
 
