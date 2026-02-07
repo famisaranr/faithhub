@@ -1,6 +1,7 @@
 "use client";
 
 import { SectionConfig } from "../types";
+import Link from "next/link";
 import { Facebook, Instagram, Globe, Heart } from "lucide-react";
 
 export const FooterBlock = ({ section }: { section: SectionConfig & { type: "footer" } }) => {
@@ -69,15 +70,13 @@ export const FooterBlock = ({ section }: { section: SectionConfig & { type: "foo
                             <span className="text-[10px] text-gray-500 font-medium tracking-wide">
                                 Sponsored by: Russell B. Famisaran
                             </span>
-                            <a
-                                href="https://www.ourfaithhub.com/landing"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <Link
+                                href="/landing"
                                 className="text-xs font-semibold text-gold hover:text-white transition-colors flex items-center gap-1 group/link"
                             >
                                 Visit Website
                                 <span className="group-hover/link:translate-x-1 transition-transform">→</span>
-                            </a>
+                            </Link>
                         </div>
                     </div>
                 </div>
