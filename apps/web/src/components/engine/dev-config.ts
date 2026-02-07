@@ -12,7 +12,7 @@ export const DEV_CENTENNIAL_CONFIG: PageConfig = {
         {
             id: "home",
             type: "hero",
-            title: "100 Years of Grace",
+            title: "Faithful Through the Ages: Celebrating 100 Years of God’s Grace",
             subtitle: "Celebrating a century of faith, hope, and community in Batangas City.",
             countdownTarget: "2026-07-25T08:30:00+08:00", // July 25, 2026 8:30 AM Phil Time
             backgroundImage: "https://images.unsplash.com/photo-1438232992991-995b7058bbb3?q=80&w=2673&auto=format&fit=crop",
