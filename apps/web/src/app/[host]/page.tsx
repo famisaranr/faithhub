@@ -15,6 +15,7 @@ export default async function TenantPage({ params }: { params: Promise<{ host: s
         const config = DEV_CENTENNIAL_CONFIG;
 
         let tenant: Tenant | null = null;
+        let dbErrorInstance: Error | null = null;
 
         try {
             tenant = await db.tenant.findUnique({
@@ -23,6 +24,7 @@ export default async function TenantPage({ params }: { params: Promise<{ host: s
             console.log(`[TenantPage] Found tenant: ${tenant?.slug} (ID: ${tenant?.id})`);
         } catch (dbError) {
             console.error("[TenantPage] Database query failed:", dbError);
+            dbErrorInstance = dbError as Error;
             // Continue to fallback checks
         }
 
@@ -36,7 +38,12 @@ export default async function TenantPage({ params }: { params: Promise<{ host: s
             return (
                 <div className="min-h-screen flex flex-col">
                     <div className="bg-yellow-500 text-black px-4 py-2 text-center text-sm font-bold">
-                        ⚠️ {tenant === null ? "Database Unreachable" : "Tenant Not Found"} - Running in Limited Mode
+                        <div>⚠️ {tenant === null ? "Database Unreachable" : "Tenant Not Found"} - Running in Limited Mode</div>
+                        {dbErrorInstance && (
+                            <div className="text-xs font-mono mt-1 opacity-80 max-w-md mx-auto truncate">
+                                Error: {dbErrorInstance.message}
+                            </div>
+                        )}
                     </div>
                     <TenantApp config={config} tenant={undefined} />
                 </div>
