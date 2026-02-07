@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 30% 10%;
+    --foreground: 45 30% 95%;
+
+    --card: 220 30% 10%;
+    --card-foreground: 45 30% 95%;
+
+    --popover: 220 30% 10%;
+    --popover-foreground: 45 30% 95%;
+
+    --primary: 45 100% 50%;
+    --primary-foreground: 220 30% 10%;
+
+    --secondary: 220 20% 20%;
+    --secondary-foreground: 45 30% 95%;
+
+    --muted: 220 20% 20%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 220 20% 25%;
+    --accent-foreground: 45 30% 95%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 45 100% 50%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer utilities {
+  .text-gold {
+    color: hsl(45 100% 50%);
+  }
+}
+
+.font-heading {
+  font-family: var(--font-playfair), serif;
+}
+
+/* Custom Keyframes */
+@keyframes slow-zoom {
+  0% {
+    transform: scale(1);
+  }
+
+  100% {
+    transform: scale(1.1);
+  }
+}
+
+.animate-slow-zoom {
+  animation: slow-zoom 20s linear infinite alternate;
+}

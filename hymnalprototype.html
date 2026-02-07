@@ -1,0 +1,402 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Music, 
+  Search, 
+  ChevronLeft, 
+  Settings, 
+  Heart, 
+  Share2, 
+  PlayCircle, 
+  PauseCircle, 
+  Maximize2,
+  Minimize2,
+  BookOpen
+} from 'lucide-react';
+
+// --- Mock Data ---
+const HYMNS = [
+  {
+    id: 1,
+    title: "Holy, Holy, Holy",
+    author: "Reginald Heber",
+    key: "D Major",
+    theme: "Adoration",
+    color: "from-amber-900/80 to-slate-900", // Warm/Gold
+    accent: "text-amber-400",
+    lyrics: [
+      { type: "verse", content: "Holy, holy, holy! Lord God Almighty!\nEarly in the morning our song shall rise to Thee;" },
+      { type: "verse", content: "Holy, holy, holy, merciful and mighty!\nGod in three Persons, blessed Trinity!" },
+      { type: "verse", content: "Holy, holy, holy! All the saints adore Thee,\nCasting down their golden crowns around the glassy sea;" },
+      { type: "verse", content: "Cherubim and seraphim falling down before Thee,\nWho was, and is, and evermore shall be." }
+    ]
+  },
+  {
+    id: 2,
+    title: "It Is Well With My Soul",
+    author: "Horatio G. Spafford",
+    key: "C Major",
+    theme: "Peace",
+    color: "from-blue-900/80 to-slate-900", // Deep Blue
+    accent: "text-blue-300",
+    lyrics: [
+      { type: "verse", content: "When peace, like a river, attendeth my way,\nWhen sorrows like sea billows roll;" },
+      { type: "verse", content: "Whatever my lot, Thou has taught me to say,\nIt is well, it is well, with my soul." },
+      { type: "chorus", content: "It is well (it is well),\nWith my soul (with my soul),\nIt is well, it is well, with my soul." },
+      { type: "verse", content: "My sin, oh, the bliss of this glorious thought!\nMy sin, not in part but the whole," },
+      { type: "verse", content: "Is nailed to the cross, and I bear it no more,\nPraise the Lord, praise the Lord, O my soul!" }
+    ]
+  },
+  {
+    id: 3,
+    title: "Amazing Grace",
+    author: "John Newton",
+    key: "G Major",
+    theme: "Salvation",
+    color: "from-emerald-900/80 to-slate-900", // Deep Green
+    accent: "text-emerald-300",
+    lyrics: [
+      { type: "verse", content: "Amazing grace! How sweet the sound\nThat saved a wretch like me!" },
+      { type: "verse", content: "I once was lost, but now am found;\nWas blind, but now I see." },
+      { type: "verse", content: "’Twas grace that taught my heart to fear,\nAnd grace my fears relieved;" },
+      { type: "verse", content: "How precious did that grace appear\nThe hour I first believed." }
+    ]
+  },
+  {
+    id: 4,
+    title: "Be Thou My Vision",
+    author: "Eleanor Hull",
+    key: "Eb Major",
+    theme: "Guidance",
+    color: "from-purple-900/80 to-slate-900", // Royal Purple
+    accent: "text-purple-300",
+    lyrics: [
+      { type: "verse", content: "Be Thou my Vision, O Lord of my heart;\nNaught be all else to me, save that Thou art." },
+      { type: "verse", content: "Thou my best Thought, by day or by night,\nWaking or sleeping, Thy presence my light." },
+      { type: "verse", content: "Be Thou my Wisdom, and Thou my true Word;\nI ever with Thee and Thou with me, Lord;" },
+      { type: "verse", content: "High King of Heaven, my victory won,\nMay I reach Heaven's joys, O bright Heaven's Sun!" }
+    ]
+  }
+];
+
+// --- Components ---
+
+const BackgroundAmbient = ({ activeColor }) => (
+  <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+    {/* Base Dark Layer */}
+    <div className="absolute inset-0 bg-slate-950" />
+    
+    {/* Dynamic Gradient Orb 1 */}
+    <div className={`absolute top-[-10%] left-[-10%] w-[80vw] h-[80vw] rounded-full blur-[120px] opacity-40 mix-blend-screen transition-colors duration-[2000ms] ease-in-out bg-gradient-to-br ${activeColor}`} />
+    
+    {/* Dynamic Gradient Orb 2 */}
+    <div className={`absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full blur-[100px] opacity-20 mix-blend-screen transition-colors duration-[2000ms] ease-in-out bg-gradient-to-tl ${activeColor}`} />
+    
+    {/* Dust Motes Overlay (CSS Animation simulation) */}
+    <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] animate-pulse" />
+  </div>
+);
+
+const GalleryCard = ({ hymn, onClick }) => (
+  <button 
+    onClick={() => onClick(hymn)}
+    className="group relative flex-shrink-0 w-64 h-96 mx-4 first:ml-8 last:mr-8 rounded-2xl overflow-hidden transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-white/10 focus:outline-none text-left"
+  >
+    {/* Card Background */}
+    <div className={`absolute inset-0 bg-gradient-to-br ${hymn.color} opacity-80 group-hover:opacity-100 transition-opacity duration-500`} />
+    
+    {/* Glass overlay */}
+    <div className="absolute inset-0 bg-white/5 backdrop-blur-[2px] group-hover:backdrop-blur-none transition-all duration-500" />
+    
+    {/* Content */}
+    <div className="absolute inset-0 p-6 flex flex-col justify-end">
+      <div className="transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+        <span className={`text-xs font-bold tracking-[0.2em] uppercase mb-2 block opacity-80 ${hymn.accent}`}>
+          {hymn.theme}
+        </span>
+        <h3 className="text-2xl font-serif font-bold text-white mb-1 leading-tight">
+          {hymn.title}
+        </h3>
+        <p className="text-sm text-slate-300 font-light italic">
+          {hymn.author}
+        </p>
+      </div>
+    </div>
+
+    {/* Decorative Border */}
+    <div className="absolute inset-0 border border-white/10 rounded-2xl group-hover:border-white/30 transition-colors duration-500" />
+  </button>
+);
+
+const Navigation = ({ onSearch }) => (
+  <nav className="fixed top-0 left-0 right-0 z-50 h-20 px-6 flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/10">
+        <BookOpen size={14} className="text-white" />
+      </div>
+      <span className="text-white font-serif tracking-widest text-sm opacity-90">FAITHHUB</span>
+    </div>
+    
+    <button 
+      onClick={onSearch}
+      className="w-10 h-10 rounded-full bg-white/5 backdrop-blur-md flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors"
+    >
+      <Search size={18} className="text-white" />
+    </button>
+  </nav>
+);
+
+const SearchOverlay = ({ isOpen, onClose, onSelect }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 z-[60] backdrop-blur-xl bg-slate-900/80 animate-in fade-in duration-300 flex flex-col pt-32 px-6">
+      <div className="max-w-md mx-auto w-full">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-3xl font-serif text-white">Find a Hymn</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white">Close</button>
+        </div>
+        
+        <div className="relative mb-8">
+          <input 
+            type="text" 
+            placeholder="Search by title, lyrics, or mood..." 
+            className="w-full bg-white/10 border border-white/20 rounded-xl p-4 pl-12 text-white placeholder:text-slate-400 focus:outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+            autoFocus
+          />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Suggested Moods</h3>
+          <div className="flex flex-wrap gap-3">
+            {['Peace', 'Adoration', 'Grace', 'Warfare', 'Communion'].map(tag => (
+              <button key={tag} className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-slate-300 text-sm hover:bg-white/10 transition-colors">
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const HymnDetail = ({ hymn, onBack }) => {
+  const [activeVerse, setActiveVerse] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isImmersive, setIsImmersive] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const scrollRef = useRef(null);
+  let controlsTimeout = null;
+
+  // Auto-hide controls in immersive mode
+  const handleInteraction = () => {
+    setShowControls(true);
+    if (controlsTimeout) clearTimeout(controlsTimeout);
+    if (isImmersive) {
+      controlsTimeout = setTimeout(() => setShowControls(false), 3000);
+    }
+  };
+
+  useEffect(() => {
+    handleInteraction();
+    return () => clearTimeout(controlsTimeout);
+  }, [isImmersive]);
+
+  const toggleImmersive = () => {
+    setIsImmersive(!isImmersive);
+    setShowControls(true); // Always show initially when toggling
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 z-40 flex flex-col animate-in slide-in-from-bottom-10 duration-700"
+      onClick={handleInteraction}
+      onScroll={handleInteraction}
+    >
+      {/* Dynamic Hymn Background */}
+      <div className={`absolute inset-0 bg-gradient-to-b ${hymn.color} opacity-40`} />
+      
+      {/* Top Bar (Hides in immersive) */}
+      <div className={`absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-50 transition-all duration-700 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-10 pointer-events-none'}`}>
+        <button 
+          onClick={onBack}
+          className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/40 transition-colors"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <div className="flex gap-4">
+            <button className="text-white/70 hover:text-white"><Settings size={20} /></button>
+            <button className="text-white/70 hover:text-white"><Share2 size={20} /></button>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div 
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative z-10 px-6 pt-32 pb-48"
+      >
+        <div className={`max-w-lg mx-auto transition-all duration-1000 ${isImmersive ? 'scale-105' : 'scale-100'}`}>
+          {/* Header */}
+          <div className="text-center mb-16">
+            <h1 className="text-4xl md:text-5xl font-serif font-bold text-white mb-4 leading-tight drop-shadow-lg">
+              {hymn.title}
+            </h1>
+            <p className="text-white/60 font-light tracking-wide uppercase text-sm">
+              {hymn.key} • {hymn.author}
+            </p>
+          </div>
+
+          {/* Lyrics */}
+          <div className="space-y-12">
+            {hymn.lyrics.map((verse, idx) => (
+              <div 
+                key={idx}
+                onClick={(e) => { e.stopPropagation(); setActiveVerse(idx); }}
+                className={`transition-all duration-700 cursor-pointer 
+                  ${activeVerse === idx 
+                    ? 'opacity-100 scale-100 blur-none' 
+                    : 'opacity-40 scale-95 blur-[1px] hover:opacity-60'}`}
+              >
+                {verse.type === 'chorus' && (
+                  <span className={`block text-xs font-bold uppercase tracking-widest mb-2 ${hymn.accent}`}>Chorus</span>
+                )}
+                <p className={`text-xl md:text-2xl font-serif leading-relaxed text-center whitespace-pre-line ${verse.type === 'chorus' ? 'italic text-white' : 'text-slate-100'}`}>
+                  {verse.content}
+                </p>
+              </div>
+            ))}
+          </div>
+          
+          <div className="h-32 flex items-center justify-center mt-12 opacity-50">
+             <div className="w-1 h-12 bg-gradient-to-b from-white to-transparent rounded-full" />
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Control Deck (Hides in immersive) */}
+      <div className={`absolute bottom-0 left-0 right-0 p-8 z-50 transition-all duration-700 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+        <div className="max-w-lg mx-auto">
+            {/* Glass Control Bar */}
+            <div className="bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
+                
+                {/* Immersive Toggle */}
+                <button 
+                  onClick={toggleImmersive}
+                  className={`flex flex-col items-center gap-1 ${isImmersive ? 'text-blue-300' : 'text-slate-400 hover:text-white'}`}
+                >
+                    {isImmersive ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                    <span className="text-[10px] uppercase tracking-wider">Focus</span>
+                </button>
+
+                {/* Play/Pad Button */}
+                <button 
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="w-14 h-14 bg-white text-slate-900 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-lg shadow-white/10"
+                >
+                    {isPlaying ? <PauseCircle size={28} fill="currentColor" /> : <PlayCircle size={28} fill="currentColor" />}
+                </button>
+
+                {/* Favorites */}
+                <button className="flex flex-col items-center gap-1 text-slate-400 hover:text-red-400 transition-colors">
+                    <Heart size={20} />
+                    <span className="text-[10px] uppercase tracking-wider">Save</span>
+                </button>
+            </div>
+            
+            {/* Pad Indicator */}
+            {isPlaying && (
+                <div className="text-center mt-4 animate-pulse">
+                    <span className={`text-xs font-bold uppercase tracking-[0.2em] ${hymn.accent}`}>
+                        Pad Active • {hymn.key}
+                    </span>
+                </div>
+            )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Main App Component ---
+
+export default function App() {
+  const [view, setView] = useState('gallery'); // gallery, hymn
+  const [selectedHymn, setSelectedHymn] = useState(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Determine current ambient color based on selection or default
+  const ambientColor = selectedHymn ? selectedHymn.color : 'from-slate-800 to-slate-950';
+
+  const handleHymnSelect = (hymn) => {
+    setSelectedHymn(hymn);
+    setView('hymn');
+  };
+
+  const handleBack = () => {
+    setView('gallery');
+    // Keep selectedHymn for a moment for smooth transition or reset?
+    // Let's keep it null for ambient revert
+    setTimeout(() => setSelectedHymn(null), 300);
+  };
+
+  return (
+    <div className="relative w-full h-screen overflow-hidden bg-slate-950 text-slate-100 selection:bg-amber-500/30 font-sans">
+      
+      {/* 1. Global Background Atmosphere */}
+      <BackgroundAmbient activeColor={ambientColor} />
+
+      {/* 2. Main Content Switcher */}
+      {view === 'gallery' && (
+        <div className="relative z-10 h-full flex flex-col animate-in fade-in duration-700">
+          <Navigation onSearch={() => setIsSearchOpen(true)} />
+          
+          <div className="flex-1 flex flex-col justify-center">
+            <div className="px-8 mb-4">
+              <h2 className="text-white/50 uppercase tracking-[0.3em] text-xs font-bold mb-2">The Collection</h2>
+              <h1 className="text-4xl md:text-5xl font-serif text-white">Sabbath Services</h1>
+            </div>
+
+            {/* Horizontal Scroll Gallery */}
+            <div className="flex overflow-x-auto pb-12 pt-4 px-4 hide-scrollbar snap-x snap-mandatory">
+              {HYMNS.map(hymn => (
+                <div key={hymn.id} className="snap-center">
+                  <GalleryCard hymn={hymn} onClick={handleHymnSelect} />
+                </div>
+              ))}
+              {/* Spacer */}
+              <div className="w-8 flex-shrink-0" /> 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Hymn View Overlay */}
+      {view === 'hymn' && selectedHymn && (
+        <HymnDetail hymn={selectedHymn} onBack={handleBack} />
+      )}
+
+      {/* 4. Search Overlay */}
+      <SearchOverlay 
+        isOpen={isSearchOpen} 
+        onClose={() => setIsSearchOpen(false)} 
+      />
+
+      {/* CSS for hiding scrollbars but keeping functionality */}
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        /* Custom selection color */
+        ::selection {
+          background: rgba(251, 191, 36, 0.3);
+          color: white;
+        }
+      `}</style>
+    </div>
+  );
+}

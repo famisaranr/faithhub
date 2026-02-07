@@ -1,0 +1,761 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Users, 
+  Activity, 
+  Calendar, 
+  Search, 
+  Bell, 
+  Menu, 
+  ChevronRight, 
+  MapPin, 
+  Phone, 
+  Mail, 
+  Heart, 
+  Shield, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle,
+  X,
+  LogOut,
+  Zap,
+  BookOpen,
+  Cross,
+  Briefcase,
+  Package,
+  FileText,
+  ClipboardList,
+  Wrench,
+  Layers,
+  Sun,
+  Moon,
+  Cloud,
+  Navigation,
+  LocateFixed
+} from 'lucide-react';
+
+/**
+ * FaithHub Officer Portal - SDA Edition (Geo-Intelligent)
+ * * Design System: "Sanctuary & Shadow"
+ * - Background: Void Navy (#0A0E17)
+ * - Accent: Stained Glass Gold (#D4AF37)
+ * - Surface: Glassmorphism (White/5%)
+ */
+
+// --- Geo-Intelligence Configuration ---
+const CHURCH_LOCATION = { lat: 40.7128, lng: -74.0060 }; // Mock Center Point
+
+const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  const d = R * c; // Distance in km
+  return (d * 0.621371).toFixed(1); // Convert to miles
+};
+
+const deg2rad = (deg) => {
+  return deg * (Math.PI/180);
+};
+
+// --- Mock Data ---
+
+const MEMBER_DATA = [
+  { id: 1, name: "Sarah Jenkins", role: "Sabbath School Supt.", status: "Active", image: "SJ", lastSeen: "Today", location: "Main Sanctuary", giving: "Returned Faithful", phone: "555-0123", lat: 40.7138, lng: -74.0065, address: "123 Faith Lane" },
+  { id: 2, name: "Elder Marcus Thorne", role: "Head Deacon", status: "On Duty", image: "MT", lastSeen: "Today", location: "Foyer", giving: "Returned Faithful", phone: "555-0198", lat: 40.7128, lng: -74.0060, address: "On Premises" }, // At church
+  { id: 3, name: "Elena Rodriguez", role: "Member", status: "Away", image: "ER", lastSeen: "3 weeks ago", location: "N/A", giving: "Pending", phone: "555-0876", lat: 40.7580, lng: -73.9855, address: "45 Broadway" }, // Further away
+  { id: 4, name: "David Kim", role: "AY Leader", status: "Active", image: "DK", lastSeen: "Yesterday", location: "Youth Hall", giving: "Returned Faithful", phone: "555-0342", lat: 40.7145, lng: -74.0020, address: "88 Olive St" },
+  { id: 5, name: "The Johnson Family", role: "Family", status: "Checking In", image: "TJ", lastSeen: "Just now", location: "Cradle Roll", giving: "Returned Faithful", phone: "555-0999", lat: 40.7110, lng: -74.0090, address: "12 Maple Dr" },
+];
+
+const SERVICE_DATA = {
+  "Midweek Prayer": [
+    { time: "Wed 19:00", event: "Praise & Worship", team: "Praise Team", status: "upcoming" },
+    { time: "Wed 19:20", event: "Testimonies", team: "Clerk", status: "upcoming" },
+    { time: "Wed 19:40", event: "Prayer Session", team: "Prayer Band", status: "upcoming" },
+    { time: "Wed 20:00", event: "Devotional", team: "First Elder", status: "upcoming" }
+  ],
+  "Vespers (Fri)": [
+    { time: "Fri 18:30", event: "Song Service", team: "Youth Choir", status: "upcoming" },
+    { time: "Fri 18:50", event: "Opening Prayer", team: "Deaconry", status: "upcoming" },
+    { time: "Fri 19:00", event: "Evening Devotional", team: "Guest Speaker", status: "upcoming" },
+    { time: "Fri 19:45", event: "Closing Prayer", team: "Elder on Duty", status: "upcoming" }
+  ],
+  "Sabbath School": [
+    { time: "09:15", event: "Song Service", team: "Choristers", status: "complete" },
+    { time: "09:30", event: "Opening Prayer", team: "Supt.", status: "active" },
+    { time: "09:40", event: "Mission Report", team: "Mission Sec.", status: "upcoming" },
+    { time: "09:50", event: "Lesson Study", team: "Teachers", status: "upcoming" },
+    { time: "10:40", event: "Closing Thought", team: "Supt.", status: "upcoming" }
+  ],
+  "Divine Service": [
+    { time: "11:00", event: "Call to Worship", team: "Platform Party", status: "upcoming" },
+    { time: "11:15", event: "Tithes & Offerings", team: "Deacons", status: "upcoming" },
+    { time: "11:30", event: "Children's Story", team: "Children's Min", status: "upcoming" },
+    { time: "11:45", event: "Special Music", team: "Choir", status: "upcoming" },
+    { time: "12:00", event: "Sermon", team: "Pastor John", status: "upcoming" }
+  ],
+  "Adventist Youth": [
+    { time: "16:30", event: "Singspiration", team: "Music Team", status: "upcoming" },
+    { time: "17:00", event: "Bible Drill", team: "AY Leader", status: "upcoming" },
+    { time: "17:30", event: "Main Feature", team: "Social Comm.", status: "upcoming" },
+    { time: "18:15", event: "Sundown Worship", team: "Elder on Duty", status: "upcoming" },
+    { time: "18:30", event: "Closing Sabbath", team: "All", status: "upcoming" }
+  ]
+};
+
+const INVENTORY_DATA = [
+  { item: "Communion Cups", level: 85, status: "Good" },
+  { item: "SS Quarterlies (Adult)", level: 12, status: "Low" },
+  { item: "Anointing Oil", level: 40, status: "Ok" },
+  { item: "Potluck Supplies", level: 90, status: "Good" },
+];
+
+const DEPARTMENT_PLANS = [
+  { dept: "Adventist Youth", event: "Global Youth Day", date: "Mar 18", status: "Planning" },
+  { dept: "Personal Min.", event: "Evangelism Series", date: "Apr 05", status: "Approved" },
+  { dept: "Health Min.", event: "Cooking Class", date: "Feb 28", status: "Ready" },
+];
+
+// --- Components ---
+
+const GlassPanel = ({ children, className = "", onClick }) => (
+  <div 
+    onClick={onClick}
+    className={`backdrop-blur-xl bg-white/5 border border-white/10 shadow-2xl rounded-2xl ${className} transition-all duration-300`}
+  >
+    {children}
+  </div>
+);
+
+const Badge = ({ status }) => {
+  const colors = {
+    "Active": "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+    "On Duty": "bg-amber-500/20 text-amber-300 border-amber-500/30",
+    "Away": "bg-slate-500/20 text-slate-300 border-slate-500/30",
+    "Checking In": "bg-blue-500/20 text-blue-300 border-blue-500/30",
+    "Low": "bg-red-500/20 text-red-300 border-red-500/30",
+    "Good": "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+    "Planning": "bg-blue-500/20 text-blue-300 border-blue-500/30",
+    "Approved": "bg-purple-500/20 text-purple-300 border-purple-500/30",
+    "Ok": "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+    "Ready": "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+  };
+  const style = colors[status] || colors["Active"];
+  
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${style} backdrop-blur-md`}>
+      {status}
+    </span>
+  );
+};
+
+const MetricCard = ({ title, value, trend, icon: Icon, delay }) => (
+  <GlassPanel className="p-5 flex flex-col justify-between h-32 relative overflow-hidden group hover:bg-white/10 cursor-pointer">
+    <div className={`absolute top-0 right-0 p-24 bg-gradient-to-bl from-amber-500/10 to-transparent rounded-full blur-2xl -mr-10 -mt-10 transition-opacity duration-700 opacity-50 group-hover:opacity-100`}></div>
+    
+    <div className="flex justify-between items-start z-10">
+      <span className="text-slate-400 text-sm uppercase tracking-wider font-medium">{title}</span>
+      <Icon className="text-amber-400/80 w-5 h-5" />
+    </div>
+    
+    <div className="z-10 animate-fade-in-up" style={{ animationDelay: `${delay}ms` }}>
+      <h3 className="text-3xl font-serif text-white font-medium">{value}</h3>
+      <div className="flex items-center gap-1 mt-1">
+        <span className="text-emerald-400 text-xs font-bold">{trend}</span>
+        <span className="text-slate-500 text-xs">vs last Sabbath</span>
+      </div>
+    </div>
+  </GlassPanel>
+);
+
+const ProgressBar = ({ percentage, colorClass = "bg-emerald-500" }) => (
+    <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+        <div className={`h-full ${percentage < 30 ? 'bg-red-500' : colorClass} transition-all duration-1000`} style={{ width: `${percentage}%` }}></div>
+    </div>
+);
+
+// --- Main Views ---
+
+const Dashboard = ({ setActiveView }) => {
+  return (
+    <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-serif text-white tracking-tight">Command Center</h1>
+          <p className="text-slate-400 text-sm">Divine Service • 10:14 AM</p>
+        </div>
+        <div className="relative">
+          <div className="absolute inset-0 bg-red-500 blur-lg opacity-40 animate-pulse"></div>
+          <GlassPanel className="relative px-3 py-1 flex items-center gap-2 border-red-500/30">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+            <span className="text-xs font-bold text-white tracking-widest">LIVE</span>
+          </GlassPanel>
+        </div>
+      </div>
+
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-2 gap-4">
+        <MetricCard title="Attendance" value="452" trend="+12%" icon={Users} delay={100} />
+        <MetricCard title="Tithes & Off." value="$12.4k" trend="+5%" icon={Heart} delay={200} />
+        <MetricCard title="Lesson Study" value="385" trend="+15" icon={BookOpen} delay={300} />
+        <MetricCard title="Facilities" value="All Good" trend="1 Tkt" icon={Wrench} delay={400} />
+      </div>
+
+      {/* Live Alerts Section */}
+      <div>
+        <h2 className="text-slate-400 text-xs uppercase tracking-widest font-semibold mb-3 ml-1">Live Feed</h2>
+        <div className="space-y-3">
+          <GlassPanel className="p-4 flex items-center gap-4 border-l-4 border-l-emerald-500">
+            <div className="bg-emerald-500/20 p-2 rounded-full">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-white text-sm font-medium">Cradle Roll Dismissed</p>
+              <p className="text-slate-500 text-xs">2 mins ago • Parents picking up</p>
+            </div>
+          </GlassPanel>
+
+          <GlassPanel className="p-4 flex items-center gap-4 border-l-4 border-l-amber-500">
+            <div className="bg-amber-500/20 p-2 rounded-full">
+              <AlertCircle className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <p className="text-white text-sm font-medium">Potluck Setup Required</p>
+              <p className="text-slate-500 text-xs">15 mins ago • Fellowship Hall</p>
+            </div>
+          </GlassPanel>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Members = ({ onSelectMember }) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Calculate distances for all members
+  const membersWithDistance = MEMBER_DATA.map(m => ({
+    ...m,
+    distance: getDistanceFromLatLonInKm(CHURCH_LOCATION.lat, CHURCH_LOCATION.lng, m.lat, m.lng)
+  }));
+
+  // Sort by distance (closest first)
+  const sortedMembers = membersWithDistance.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+
+  const filteredMembers = sortedMembers.filter(m => 
+    m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    m.role.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="h-full pb-24 animate-in fade-in slide-in-from-right-4 duration-500">
+      <div className="sticky top-0 z-20 pb-4 backdrop-blur-sm">
+        <div className="flex justify-between items-end mb-4">
+             <div>
+                <h1 className="text-3xl font-serif text-white tracking-tight">Shepherd's View</h1>
+                <div className="flex items-center gap-1 text-emerald-400 text-xs mt-1">
+                    <Navigation className="w-3 h-3" />
+                    <span>Sorted by Proximity</span>
+                </div>
+             </div>
+        </div>
+        
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-3 text-slate-400 w-5 h-5" />
+          <input 
+            type="text"
+            placeholder="Search brethren..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50 backdrop-blur-md transition-all"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {filteredMembers.map((member) => (
+          <GlassPanel 
+            key={member.id} 
+            onClick={() => onSelectMember(member)}
+            className="p-4 flex items-center justify-between group hover:bg-white/10 cursor-pointer active:scale-[0.98]"
+          >
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-slate-700 to-slate-600 flex items-center justify-center text-white font-serif font-bold border border-white/10 shadow-inner">
+                    {member.image}
+                </div>
+                {member.distance < 0.2 && (
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-[#0A0E17] flex items-center justify-center">
+                        <MapPin className="w-3 h-3 text-white fill-white" />
+                    </div>
+                )}
+              </div>
+              <div>
+                <h3 className="text-white font-medium group-hover:text-amber-400 transition-colors">{member.name}</h3>
+                <div className="flex items-center gap-2">
+                    <p className="text-slate-400 text-sm">{member.role}</p>
+                    <span className="text-slate-600 text-xs">•</span>
+                    <p className="text-slate-500 text-xs flex items-center gap-0.5">
+                        <Navigation className="w-2.5 h-2.5" /> {member.distance} mi
+                    </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <Badge status={member.status} />
+              <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-colors" />
+            </div>
+          </GlassPanel>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const Programming = () => {
+    const [tab, setTab] = useState('services'); // services, departments
+    const [selectedService, setSelectedService] = useState('Sabbath School');
+
+    const servicesList = Object.keys(SERVICE_DATA);
+
+    return (
+        <div className="pb-24 animate-in fade-in slide-in-from-right-4 duration-500">
+            <div className="mb-6">
+                <h1 className="text-3xl font-serif text-white tracking-tight">Programming</h1>
+                <p className="text-slate-400 text-sm">Services & Departmental Strategy</p>
+            </div>
+
+            {/* Sub-nav Tabs */}
+            <div className="flex p-1 mb-6 bg-white/5 rounded-xl border border-white/10 backdrop-blur-md">
+                <button 
+                    onClick={() => setTab('services')}
+                    className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${tab === 'services' ? 'bg-amber-500 text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                >
+                    Run Sheets
+                </button>
+                <button 
+                    onClick={() => setTab('departments')}
+                    className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${tab === 'departments' ? 'bg-amber-500 text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                >
+                    Coordination
+                </button>
+            </div>
+
+            {tab === 'services' ? (
+                <div className="space-y-6">
+                    {/* Horizontal Service Selector - Sticky Sub-Menu */}
+                    <div className="sticky top-0 z-20 bg-[#0A0E17]/90 backdrop-blur-md py-3 -mx-4 px-4 border-b border-white/5 shadow-lg">
+                        <div className="flex overflow-x-auto gap-3 scrollbar-hide">
+                            {servicesList.map((service) => (
+                                 <button
+                                    key={service}
+                                    onClick={() => setSelectedService(service)}
+                                    className={`whitespace-nowrap px-4 py-2 rounded-full border transition-all text-xs font-bold uppercase tracking-wider
+                                        ${selectedService === service 
+                                            ? 'bg-amber-500 text-black border-amber-500 shadow-[0_0_15px_rgba(251,191,36,0.4)]' 
+                                            : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'}
+                                    `}
+                                >
+                                    {service}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="relative border-l border-white/10 ml-4 space-y-8 animate-in slide-in-from-left-2 pt-2">
+                        {SERVICE_DATA[selectedService].map((item, index) => {
+                            const isComplete = item.status === 'complete';
+                            const isActive = item.status === 'active';
+                            return (
+                                <div key={index} className="relative pl-8 group">
+                                    <div className={`absolute -left-[5px] top-2 w-2.5 h-2.5 rounded-full transition-all duration-500
+                                        ${isActive ? 'bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)] scale-125' : 
+                                        isComplete ? 'bg-emerald-500' : 'bg-slate-700'}
+                                    `}></div>
+                                    
+                                    <GlassPanel className={`p-4 ${isActive ? 'border-amber-500/30 bg-amber-500/5' : ''}`}>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h3 className={`font-medium text-lg ${isActive ? 'text-white' : 'text-slate-200'}`}>
+                                                    {item.event}
+                                                </h3>
+                                                <div className="flex items-center gap-3 mt-1">
+                                                    <span className="text-sm font-mono text-amber-500/80">{item.time}</span>
+                                                    <span className="text-slate-500 text-xs flex items-center gap-1"><Users className="w-3 h-3" /> {item.team}</span>
+                                                </div>
+                                            </div>
+                                            {isActive && <Activity className="w-4 h-4 text-amber-400 animate-pulse" />}
+                                        </div>
+                                    </GlassPanel>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-4 animate-in slide-in-from-right-2">
+                     <div className="flex justify-between items-center mb-2">
+                         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Department Plans</h3>
+                         <button className="text-amber-400 text-xs">+ Create New</button>
+                     </div>
+                    {DEPARTMENT_PLANS.map((plan, idx) => (
+                        <GlassPanel key={idx} className="p-5 border-l-4 border-l-blue-500/50">
+                            <div className="flex justify-between items-start mb-3">
+                                <h3 className="text-lg font-medium text-white">{plan.dept}</h3>
+                                <Badge status={plan.status} />
+                            </div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <Calendar className="w-4 h-4 text-amber-400" />
+                                <span className="text-slate-300 text-sm">{plan.event}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs text-slate-500">
+                                <span>Target Date: {plan.date}</span>
+                                <span className="underline cursor-pointer hover:text-amber-400">View Proposal</span>
+                            </div>
+                        </GlassPanel>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const AdminLogistics = () => {
+    return (
+        <div className="pb-24 animate-in fade-in slide-in-from-right-4 duration-500">
+            <div className="mb-6">
+                <h1 className="text-3xl font-serif text-white tracking-tight">Admin & Logistics</h1>
+                <p className="text-slate-400 text-sm">Operations, Facilities & Clerk's Desk</p>
+            </div>
+
+            <div className="grid gap-6">
+                {/* Inventory Section */}
+                <section>
+                    <div className="flex items-center gap-2 mb-3">
+                        <Package className="w-4 h-4 text-amber-400" />
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Inventory Levels</h3>
+                    </div>
+                    <GlassPanel className="p-5 space-y-4">
+                        {INVENTORY_DATA.map((inv, idx) => (
+                            <div key={idx}>
+                                <div className="flex justify-between mb-1">
+                                    <span className="text-sm text-slate-200">{inv.item}</span>
+                                    <span className={`text-xs ${inv.level < 30 ? 'text-red-400' : 'text-emerald-400'}`}>{inv.status}</span>
+                                </div>
+                                <ProgressBar percentage={inv.level} colorClass={inv.level < 30 ? 'bg-red-500' : 'bg-emerald-500'} />
+                            </div>
+                        ))}
+                    </GlassPanel>
+                </section>
+
+                {/* Clerk's Desk */}
+                <section>
+                    <div className="flex items-center gap-2 mb-3">
+                        <FileText className="w-4 h-4 text-blue-400" />
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Clerk's Desk</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <GlassPanel className="p-4 flex flex-col items-center justify-center text-center hover:bg-white/10 cursor-pointer">
+                            <span className="text-2xl font-serif text-white mb-1">2</span>
+                            <span className="text-xs text-slate-400">Transfers Pending</span>
+                        </GlassPanel>
+                        <GlassPanel className="p-4 flex flex-col items-center justify-center text-center hover:bg-white/10 cursor-pointer">
+                            <span className="text-2xl font-serif text-white mb-1">4</span>
+                            <span className="text-xs text-slate-400">Baptisms Planned</span>
+                        </GlassPanel>
+                    </div>
+                    <GlassPanel className="p-4 mt-3 flex justify-between items-center cursor-pointer hover:bg-white/10">
+                        <div className="flex items-center gap-3">
+                            <ClipboardList className="w-5 h-5 text-slate-400" />
+                            <span className="text-sm text-slate-200">Board Meeting Minutes</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-600" />
+                    </GlassPanel>
+                </section>
+
+                {/* Facilities */}
+                <section>
+                    <div className="flex items-center gap-2 mb-3">
+                        <Wrench className="w-4 h-4 text-slate-400" />
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Facility Status</h3>
+                    </div>
+                    <GlassPanel className="p-4 border-l-4 border-l-red-500">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h4 className="text-white text-sm font-medium">Mic 2 Malfunction</h4>
+                                <p className="text-slate-500 text-xs mt-1">Reported by A/V Team • Main Sanctuary</p>
+                            </div>
+                            <button className="px-3 py-1 bg-red-500/20 text-red-300 text-xs rounded-full border border-red-500/30">High Priority</button>
+                        </div>
+                    </GlassPanel>
+                </section>
+            </div>
+        </div>
+    );
+};
+
+const MemberDetail = ({ member, onBack }) => {
+  if (!member) return null;
+
+  const openNavigation = () => {
+    // Open Google Maps with Lat/Lng
+    window.open(`https://www.google.com/maps/search/?api=1&query=${member.lat},${member.lng}`, '_blank');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#0A0E17] flex flex-col animate-in slide-in-from-bottom duration-500">
+      {/* Cinematic Header Image Placeholder */}
+      <div className="h-64 bg-gradient-to-b from-slate-800 to-[#0A0E17] relative w-full">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-amber-500/20 via-[#0A0E17]/50 to-[#0A0E17]"></div>
+        
+        <button 
+          onClick={onBack}
+          className="absolute top-6 left-6 p-2 rounded-full bg-black/20 backdrop-blur-md border border-white/10 text-white z-20 hover:bg-white/10"
+        >
+          <ChevronRight className="w-6 h-6 rotate-180" />
+        </button>
+
+        <div className="absolute -bottom-12 left-6">
+           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-400 to-amber-700 p-[2px] shadow-2xl shadow-amber-900/50">
+             <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-3xl font-serif text-white">
+               {member.image}
+             </div>
+           </div>
+        </div>
+      </div>
+
+      <div className="px-6 pt-16 pb-8 overflow-y-auto">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-serif text-white">{member.name}</h1>
+            <p className="text-amber-400/80 font-medium">{member.role}</p>
+          </div>
+          <Badge status={member.status} />
+        </div>
+
+        {/* Action Grid */}
+        <div className="grid grid-cols-3 gap-3 mt-8">
+            <button className="flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                <Phone className="w-5 h-5 text-emerald-400" />
+                <span className="text-xs text-slate-300">Call</span>
+            </button>
+            <button className="flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                <Mail className="w-5 h-5 text-blue-400" />
+                <span className="text-xs text-slate-300">Email</span>
+            </button>
+            <button 
+                onClick={openNavigation}
+                className="flex flex-col items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-amber-500/10 hover:border-amber-500/30 transition-colors group"
+            >
+                <LocateFixed className="w-5 h-5 text-amber-400 group-hover:scale-110 transition-transform" />
+                <span className="text-xs text-slate-300 group-hover:text-amber-400">Navigate</span>
+            </button>
+        </div>
+
+        <div className="mt-8 space-y-6">
+          <section>
+            <h3 className="text-slate-500 text-xs uppercase tracking-widest font-bold mb-3">Geo-Location Data</h3>
+            <GlassPanel className="p-4 space-y-3">
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-slate-400 text-sm">Registered Address</span>
+                <span className="text-white text-sm text-right">{member.address}</span>
+              </div>
+              <div className="flex justify-between border-b border-white/5 pb-2">
+                <span className="text-slate-400 text-sm">Last Ping</span>
+                <span className="text-white text-sm">{member.lastSeen}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400 text-sm">Distance</span>
+                <span className="text-emerald-400 text-sm flex items-center gap-1">
+                   <Navigation className="w-3 h-3" /> {getDistanceFromLatLonInKm(CHURCH_LOCATION.lat, CHURCH_LOCATION.lng, member.lat, member.lng)} miles
+                </span>
+              </div>
+            </GlassPanel>
+          </section>
+
+          <section>
+             <h3 className="text-slate-500 text-xs uppercase tracking-widest font-bold mb-3">Clerk's Notes</h3>
+             <GlassPanel className="p-4">
+               <p className="text-slate-300 text-sm italic">
+                 "Requested transfer of membership letter from previous conference. Pending board review."
+               </p>
+               <div className="mt-2 text-right text-xs text-slate-500">- Church Clerk, Yesterday</div>
+             </GlassPanel>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Layout & Nav ---
+
+const App = () => {
+  const [view, setView] = useState('login'); // login, dashboard, members, programming, admin
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [authStep, setAuthStep] = useState('idle'); // idle, locating, verifying, success
+
+  const handleLogin = () => {
+    // Simulate Geo-Fenced Login Sequence
+    setAuthStep('locating');
+    
+    // Step 1: Acquire GPS
+    setTimeout(() => {
+        setAuthStep('verifying');
+        
+        // Step 2: Verify Geofence
+        setTimeout(() => {
+            setAuthStep('success');
+            
+            // Step 3: Grant Access
+            setTimeout(() => {
+                setView('dashboard');
+                setAuthStep('idle');
+            }, 800);
+        }, 1200);
+    }, 1200);
+  };
+
+  const NavButton = ({ icon: Icon, label, active, onClick }) => (
+    <button 
+      onClick={onClick}
+      className={`relative flex flex-col items-center justify-center w-14 h-14 transition-all duration-300 ${active ? '-translate-y-2' : 'opacity-50 hover:opacity-80'}`}
+    >
+      {active && (
+        <div className="absolute -top-3 w-8 h-8 bg-amber-500/30 blur-lg rounded-full"></div>
+      )}
+      <Icon className={`w-5 h-5 mb-1 ${active ? 'text-white' : 'text-slate-400'}`} />
+      <span className={`text-[9px] font-medium tracking-wide ${active ? 'text-white' : 'text-slate-500'}`}>{label}</span>
+    </button>
+  );
+
+  if (view === 'login') {
+    return (
+      <div className="min-h-screen bg-[#0A0E17] text-white flex flex-col items-center justify-center relative overflow-hidden font-sans">
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+          <div className="absolute top-[-10%] left-[50%] -translate-x-1/2 w-[600px] h-[600px] bg-blue-900/20 rounded-full blur-[120px]"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-amber-900/10 rounded-full blur-[100px]"></div>
+        </div>
+
+        <div className="z-10 w-full max-w-md px-8 text-center">
+          <div className="mb-12 animate-fade-in-down">
+            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-tr from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(217,119,6,0.4)]">
+               <BookOpen className="w-10 h-10 text-white fill-white/20" />
+            </div>
+            <h1 className="text-4xl font-serif tracking-tight mb-2">FaithHub</h1>
+            <p className="text-slate-400 text-sm tracking-widest uppercase">Officer Portal • SDA Edition</p>
+          </div>
+
+          {authStep !== 'idle' ? (
+             <div className="flex flex-col items-center space-y-4">
+                <div className="relative">
+                    <div className="w-16 h-16 border-4 border-white/5 rounded-full animate-spin"></div>
+                    <div className="absolute top-0 left-0 w-16 h-16 border-4 border-amber-500/50 border-t-amber-400 rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <MapPin className="w-6 h-6 text-amber-400 animate-pulse" />
+                    </div>
+                </div>
+                
+                <div className="h-6 overflow-hidden relative w-full">
+                    {authStep === 'locating' && (
+                        <p className="text-amber-400 text-xs tracking-widest uppercase animate-fade-in-up text-center">Acquiring Satellites...</p>
+                    )}
+                    {authStep === 'verifying' && (
+                        <p className="text-emerald-400 text-xs tracking-widest uppercase animate-fade-in-up text-center">Verifying Geofence...</p>
+                    )}
+                    {authStep === 'success' && (
+                        <p className="text-white text-xs tracking-widest uppercase animate-fade-in-up text-center font-bold">Access Granted</p>
+                    )}
+                </div>
+             </div>
+          ) : (
+            <div className="animate-fade-in-up space-y-4">
+              <GlassPanel className="p-8 border-t-white/20">
+                <p className="text-slate-300 mb-6 font-light">Happy Sabbath, <span className="text-white font-medium">Elder James</span>.</p>
+                <button 
+                  onClick={handleLogin}
+                  className="w-full bg-white text-black font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  <LocateFixed className="w-5 h-5 text-black" />
+                  Geo-Verify & Login
+                </button>
+              </GlassPanel>
+              <p className="text-[10px] text-slate-600 uppercase tracking-wider">Location services required for entry</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0A0E17] text-white relative font-sans selection:bg-amber-500/30">
+        
+      {/* Dynamic Background */}
+      <div className="fixed inset-0 pointer-events-none">
+         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-slate-800/20 rounded-full blur-[100px]"></div>
+         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-amber-900/5 rounded-full blur-[100px]"></div>
+      </div>
+
+      {/* Main Content Area */}
+      <main className="relative z-10 px-4 pt-10 pb-32 max-w-2xl mx-auto min-h-screen">
+        {view === 'dashboard' && <Dashboard setActiveView={setView} />}
+        {view === 'members' && <Members onSelectMember={setSelectedMember} />}
+        {view === 'programming' && <Programming />}
+        {view === 'admin' && <AdminLogistics />}
+      </main>
+
+      {/* Detail Overlay */}
+      {selectedMember && (
+        <MemberDetail 
+          member={selectedMember} 
+          onBack={() => setSelectedMember(null)} 
+        />
+      )}
+
+      {/* Cinematic Navigation Dock */}
+      <div className="fixed bottom-6 left-0 right-0 flex justify-center z-40 px-2 pointer-events-none">
+        <div className="pointer-events-auto backdrop-blur-2xl bg-[#0A0E17]/90 border border-white/10 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center px-2 py-2 gap-1">
+           <NavButton 
+             icon={Activity} 
+             label="Home" 
+             active={view === 'dashboard'} 
+             onClick={() => setView('dashboard')} 
+           />
+           <NavButton 
+             icon={Users} 
+             label="Shepherd" 
+             active={view === 'members'} 
+             onClick={() => setView('members')} 
+           />
+           <NavButton 
+             icon={Layers} 
+             label="Programs" 
+             active={view === 'programming'} 
+             onClick={() => setView('programming')} 
+           />
+           <NavButton 
+             icon={Briefcase} 
+             label="Admin" 
+             active={view === 'admin'} 
+             onClick={() => setView('admin')} 
+           />
+           <div className="w-[1px] h-8 bg-white/10 mx-1"></div>
+           <NavButton 
+             icon={LogOut} 
+             label="Exit" 
+             active={false} 
+             onClick={() => setView('login')} 
+           />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;

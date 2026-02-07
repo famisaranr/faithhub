@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Tenant {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  customDomain String?  @unique
+  logo         String?
+  branding     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  events       Event[]
+  members      Member[]
+  servicePlans ServicePlan[]
+  inventory    InventoryItem[]
+  alerts       OfficerAlert[]
+  imports      ImportLog[]
+}
+
+model Member {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  role      String   @default("member") // member, officer, elder
+  status    String   @default("active") // active, visiting, sick, distant
+  phone     String?
+  email     String?
+  address   String?
+  avatarUrl String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model ServicePlan {
+  id        String   @id @default(cuid())
+  tenantId  String
+  date      DateTime
+  type      String   // divine_worship, sabbath_school, ay
+  title     String?
+  items     Json     // Array of { time, title, description, presenter, action }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  importId  String?
+  importLog ImportLog? @relation(fields: [importId], references: [id])
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, date])
+}
+
+model ImportLog {
+  id           String        @id @default(cuid())
+  tenantId     String
+  filename     String
+  status       String        // success, failed, partial
+  rowCount     Int
+  importedBy   String?
+  timestamp    DateTime      @default(now())
+  servicePlans ServicePlan[] // For rollback
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model InventoryItem {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  category  String   // logistics, kitchen, stationery
+  quantity  Int
+  status    String   // Good, Low, Critical
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model OfficerAlert {
+  id        String   @id @default(cuid())
+  tenantId  String
+  type      String   // alert, info, success
+  title     String
+  message   String
+  timestamp DateTime @default(now())
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  tenantId    String
+  title       String
+  slug        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  location    String?
+  status      String    @default("DRAFT")
+  pageConfig  Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  rsvps       Rsvp[]
+
+  @@unique([tenantId, slug])
+}
+
+model Rsvp {
+  id        String   @id @default(cuid())
+  eventId   String
+  name      String
+  email     String?
+  phone     String?
+  status    String
+  groupSize Int      @default(1)
+  answers   Json?
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id])
+}
+
+model Hymn {
+  hymnId        String      @id
+  number        Int
+  title         String
+  part          String
+  subcategory   String
+  language      String
+  key           String
+  tempoBpm      Int
+  timeSignature String
+  status        String
+  version       String
+  themes        String[]
+  doctrineTags  String[]
+  scriptureRefs String[]
+  lyrics        String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  recordings    Recording[]
+}
+
+model Recording {
+  recordingId String   @id
+  hymnId      String
+  source      String
+  style       String
+  audioUrl    String
+  key         String
+  tempoBpm    Int
+  active      Boolean
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  hymn        Hymn     @relation(fields: [hymnId], references: [hymnId])
+}

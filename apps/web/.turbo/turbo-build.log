@@ -1,0 +1,44 @@
+
+> web@0.1.0 build C:\Users\Russell Famisaran\Desktop\centennial\church-hub\apps\web
+> next build
+
+ ⚠ Found lockfile missing swc dependencies, patching...
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\Russell Famisaran\Desktop\centennial\church-hub\pnpm-lock.yaml as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * C:\Users\Russell Famisaran\Desktop\centennial\church-hub\apps\web\pnpm-lock.yaml
+
+   ▲ Next.js 15.5.9
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ⚠ Found lockfile missing swc dependencies, patching...
+ ⨯ Failed to patch lockfile, please try uninstalling and reinstalling next in this workspace
+[TypeError: Cannot read properties of undefined (reading 'os')]
+ ⨯ Failed to patch lockfile, please try uninstalling and reinstalling next in this workspace
+[TypeError: Cannot read properties of undefined (reading 'os')]
+ ⚠ Found lockfile missing swc dependencies, patching...
+ ⚠ Found lockfile missing swc dependencies, patching...
+ ⨯ Failed to patch lockfile, please try uninstalling and reinstalling next in this workspace
+[TypeError: Cannot read properties of undefined (reading 'os')]
+ ✓ Compiled successfully in 23.8s
+   Linting and checking validity of types ...
+ ⨯ ESLint: Invalid Options: - Unknown options: useEslintrc, extensions - 'extensions' has been removed.
+Failed to compile.
+
+.next/types/app/[host]/page.ts:34:29
+Type error: Type '{ params: { host: string; }; }' does not satisfy the constraint 'PageProps'.
+  Types of property 'params' are incompatible.
+    Type '{ host: string; }' is missing the following properties from type 'Promise<any>': then, catch, finally, [Symbol.toStringTag]
+
+[0m [90m 32 |[39m
+ [90m 33 |[39m [90m// Check the prop type of the entry function[39m
+[31m[1m>[22m[39m[90m 34 |[39m checkFields[33m<[39m[33mDiff[39m[33m<[39m[33mPageProps[39m[33m,[39m [33mFirstArg[39m[33m<[39m[33mTEntry[39m[[32m'default'[39m][33m>[39m[33m,[39m [32m'default'[39m[33m>>[39m()
+ [90m    |[39m                             [31m[1m^[22m[39m
+ [90m 35 |[39m
+ [90m 36 |[39m [90m// Check the arguments and return type of the generateMetadata function[39m
+ [90m 37 |[39m [36mif[39m ([32m'generateMetadata'[39m [36min[39m entry) {[0m
+Next.js build worker exited with code: 1 and signal: null
+ ELIFECYCLE  Command failed with exit code 1.

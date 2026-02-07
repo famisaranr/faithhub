@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FaithHub | Member App</title>
+    <meta name="theme-color" content="#1e3a8a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="FaithHub Member App">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cinzel:wght@600;700&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Cinzel', 'serif'],
+                        reader: ['Merriweather', 'serif'],
+                    },
+                    colors: {
+                        sda: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            600: '#005f9e', // Official Adventist Blue
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        gold: '#D4AF37',
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in': 'fadeIn 1s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Slide Up Animation */
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .animate-slide-up {
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        /* Sabbath Gradient Animation */
+        .sabbath-bg {
+            background: linear-gradient(270deg, #1e3a8a, #4c1d95, #1e3a8a);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-slate-800 h-screen flex flex-col font-sans select-none relative">
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="fixed top-4 left-4 right-4 z-[70] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Top Header (Location Aware) -->
+    <header class="bg-white px-4 pt-12 pb-4 shadow-sm z-20 flex justify-between items-center sticky top-0 transition-colors duration-500" id="app-header">
+        <!-- Church Identity Block -->
+        <div class="flex items-center gap-3 cursor-pointer" onclick="triggerSmartCheckIn()">
+            <div id="church-logo" class="w-10 h-10 bg-sda-600 rounded-lg flex items-center justify-center text-white shadow-sm transition-colors duration-500">
+                <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                    <path d="M12 2L2 22h20L12 2zm0 3.5L18.5 20h-13L12 5.5z"/>
+                </svg>
+            </div>
+            <div>
+                <h1 id="church-name" class="text-sm font-bold text-slate-900 leading-tight">Batangas City Central</h1>
+                <div class="flex items-center gap-1">
+                    <p class="text-[10px] text-slate-500 font-medium tracking-wide uppercase">SDA Church</p>
+                    <i data-lucide="map-pin" class="w-3 h-3 text-sda-600 animate-pulse hidden" id="gps-indicator"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="relative p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition active:scale-95">
+            <i data-lucide="bell" class="w-5 h-5 text-slate-600"></i>
+            <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+        </div>
+    </header>
+
+    <!-- Main Scrollable Content -->
+    <main class="flex-1 overflow-y-auto pb-24 px-4 hide-scrollbar pt-4">
+        
+        <!-- Sunset Widget (Dynamic Location) -->
+        <div id="sunset-widget" class="bg-gradient-to-br from-sda-900 to-sda-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden transition-all duration-1000 group">
+            <div class="absolute right-0 top-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
+            
+            <button onclick="triggerSmartCheckIn()" class="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition z-20 text-white/70 hover:text-white" title="Auto-Detect Church">
+                <i data-lucide="crosshair" class="w-4 h-4"></i>
+            </button>
+
+            <div class="flex justify-between items-end relative z-10">
+                <div>
+                    <div id="sunset-stage-badge" class="flex items-center gap-2 mb-2 opacity-90 transition-all">
+                        <i data-lucide="sunset" class="w-4 h-4 text-orange-300"></i>
+                        <span class="text-[10px] font-bold tracking-widest uppercase text-orange-100">Sabbath Opening</span>
+                    </div>
+                    <h2 id="sunset-time-display" class="text-4xl font-serif font-bold tracking-tight">5:58 PM</h2>
+                    <p id="location-label" class="text-xs text-sda-200 mt-1 font-medium flex items-center gap-1">
+                        <i data-lucide="map-pin" class="w-3 h-3"></i> Batangas City
+                    </p>
+                </div>
+                <div class="text-right pb-1">
+                    <div id="countdown-label" class="text-[10px] uppercase tracking-wide opacity-75">Countdown</div>
+                    <div id="countdown-timer" class="text-lg font-mono font-bold text-white transition-colors">00:45:00</div>
+                </div>
+            </div>
+            
+            <div class="w-full bg-black/20 h-1 mt-4 rounded-full overflow-hidden">
+                <div id="sunset-progress" class="h-full bg-orange-400 w-[10%] transition-all duration-1000"></div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Grid -->
+        <div class="flex gap-3 mt-6 overflow-x-auto hide-scrollbar pb-2 snap-x">
+            <!-- Give -->
+            <button class="snap-start flex flex-col items-center gap-2 min-w-[72px] active:opacity-70 transition" onclick="openModal('giving')">
+                <div class="w-14 h-14 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-green-700">
+                    <i data-lucide="banknote" class="w-6 h-6"></i>
+                </div>
+                <span class="text-[11px] font-bold text-slate-600">Give</span>
+            </button>
+            
+            <!-- Lesson -->
+            <button class="snap-start flex flex-col items-center gap-2 min-w-[72px] active:opacity-70 transition" onclick="openModal('lesson')">
+                <div class="w-14 h-14 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-sda-600">
+                    <i data-lucide="book-open" class="w-6 h-6"></i>
+                </div>
+                <span class="text-[11px] font-bold text-slate-600">Lesson</span>
+            </button>
+
+            <!-- Worship -->
+            <button class="snap-start flex flex-col items-center gap-2 min-w-[72px] active:opacity-70 transition" onclick="openModal('worship')">
+                <div class="w-14 h-14 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-orange-500">
+                    <i data-lucide="sun" class="w-6 h-6"></i>
+                </div>
+                <span class="text-[11px] font-bold text-slate-600">Worship</span>
+            </button>
+
+            <!-- Tech Prep -->
+            <button class="snap-start flex flex-col items-center gap-2 min-w-[72px] active:opacity-70 transition" onclick="openModal('tech-prep')">
+                <div class="w-14 h-14 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-slate-700">
+                    <i data-lucide="smartphone-nfc" class="w-6 h-6"></i>
+                </div>
+                <span class="text-[11px] font-bold text-slate-600">Tech Prep</span>
+            </button>
+
+            <!-- Officer Mode -->
+            <button class="snap-start flex flex-col items-center gap-2 min-w-[72px] active:opacity-70 transition" onclick="openModal('officer')">
+                <div class="w-14 h-14 bg-slate-800 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-white">
+                    <i data-lucide="key" class="w-6 h-6"></i>
+                </div>
+                <span class="text-[11px] font-bold text-slate-800">Officer</span>
+            </button>
+
+            <!-- Hymnal -->
+            <button class="snap-start flex flex-col items-center gap-2 min-w-[72px] active:opacity-70 transition" onclick="openModal('hymnal')">
+                <div class="w-14 h-14 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-rose-600">
+                    <i data-lucide="music" class="w-6 h-6"></i>
+                </div>
+                <span class="text-[11px] font-bold text-slate-600">Hymnal</span>
+            </button>
+
+            <!-- Audio -->
+            <button class="snap-start flex flex-col items-center gap-2 min-w-[72px] active:opacity-70 transition" onclick="openModal('audio')">
+                <div class="w-14 h-14 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-indigo-600">
+                    <i data-lucide="headphones" class="w-6 h-6"></i>
+                </div>
+                <span class="text-[11px] font-bold text-slate-600">Audio</span>
+            </button>
+        </div>
+
+        <!-- Sabbath Schedule -->
+        <div class="mt-6">
+            <div class="flex justify-between items-end mb-4">
+                <h3 class="font-bold text-slate-900 text-lg">Sabbath Order</h3>
+                <span class="text-xs text-sda-600 font-bold bg-blue-50 px-2 py-1 rounded">Jan 28</span>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden divide-y divide-slate-50">
+                <!-- Sabbath School -->
+                <div id="schedule-ss" class="p-4 flex gap-4 transition-colors duration-500">
+                    <div class="flex flex-col items-center min-w-[3rem]">
+                        <span class="text-xs text-slate-400 font-mono font-bold">08:30</span>
+                        <div class="h-full w-0.5 bg-slate-100 mt-1 mb-[-1.5rem]"></div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-900 text-sm">Sabbath School</h4>
+                        <p class="text-xs text-slate-500 mt-0.5">Superintendent: Sis. Maria Santos</p>
+                    </div>
+                </div>
+                
+                <!-- Lesson Study -->
+                <div class="p-4 flex gap-4 active:bg-slate-50 transition" onclick="openModal('lesson')">
+                    <div class="flex flex-col items-center min-w-[3rem]">
+                        <span class="text-xs text-slate-400 font-mono font-bold">09:30</span>
+                        <div class="h-full w-0.5 bg-slate-100 mt-1 mb-[-1.5rem]"></div>
+                    </div>
+                    <div class="w-full">
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-bold text-slate-900 text-sm">Lesson Study</h4>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5">Lesson 4: Psalms of Deliverance</p>
+                        <span class="text-[10px] text-sda-600 bg-sda-50 px-1.5 py-0.5 rounded mt-1 inline-block">Separation by Classes</span>
+                    </div>
+                </div>
+
+                <!-- Divine Service -->
+                <div id="schedule-divine" class="p-4 bg-orange-50/50 flex gap-4 border-l-4 border-l-orange-400 transition-colors duration-500">
+                    <div class="flex flex-col items-center min-w-[3rem]">
+                        <span class="text-xs text-orange-700 font-bold font-mono">10:45</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-900 text-sm">Divine Worship</h4>
+                        <p class="text-xs text-slate-600 mt-0.5 font-medium">Speaker: Pr. Jun Cruz (SCLC)</p>
+                        <p class="text-[10px] text-slate-400 italic mt-1">Topic: "Faith in the Fire"</p>
+                    </div>
+                </div>
+
+                <!-- A.Y. -->
+                <div class="p-4 flex gap-4">
+                    <div class="flex flex-col items-center min-w-[3rem]">
+                        <span class="text-xs text-slate-400 font-mono font-bold">16:00</span>
+                        <div class="h-full w-0.5 bg-slate-100 -mt-4 mb-2"></div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-900 text-sm">Adventist Youth (AY)</h4>
+                        <p class="text-xs text-slate-500 mt-0.5">Host: Youth Department</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Announcements -->
+        <div class="mt-8 mb-6">
+            <h3 class="font-bold text-slate-900 text-lg mb-4">Bulletins</h3>
+            <div class="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x">
+                <!-- Mid-Week Manna -->
+                <div class="snap-center min-w-[260px] bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <span class="text-[10px] font-bold tracking-wider text-sda-600 uppercase">Wed 7:00 PM</span>
+                    <h4 class="font-bold text-slate-800 mt-1">Mid-Week Manna</h4>
+                    <p class="text-xs text-slate-500 mt-1">Join us via Zoom or in the main sanctuary for prayer.</p>
+                </div>
+                <!-- Dorcas -->
+                <div class="snap-center min-w-[260px] bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <span class="text-[10px] font-bold tracking-wider text-green-600 uppercase">Dorcas Society</span>
+                    <h4 class="font-bold text-slate-800 mt-1">Community Outreach</h4>
+                    <p class="text-xs text-slate-500 mt-1">Relief goods distribution at Brgy. Santa Clara this Sunday.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Branding Footer -->
+        <a href="landing.html" target="_blank" class="mt-8 mb-6 flex justify-center opacity-60 hover:opacity-100 transition active:scale-95">
+             <div class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-full border border-slate-200">
+                <i data-lucide="network" class="w-3 h-3 text-sda-600"></i>
+                <p class="text-[10px] text-slate-500 font-medium">Powered by our <span class="font-bold text-slate-700">FaithHub</span></p>
+             </div>
+        </a>
+        
+        <!-- PROTOCOL TEST CONTROLS -->
+        <div class="mt-8 p-4 border-t border-slate-200 text-center">
+            <p class="text-xs text-slate-400 uppercase tracking-widest font-bold mb-4">-- Sabbath Protocol Simulator --</p>
+            <div class="flex flex-wrap justify-center gap-2">
+                <button onclick="setSabbathStage('prep')" class="px-3 py-2 bg-slate-200 rounded text-[10px] font-bold text-slate-600">30m: Prep</button>
+                <button onclick="setSabbathStage('ready')" class="px-3 py-2 bg-yellow-100 rounded text-[10px] font-bold text-yellow-700">18m: Ready</button>
+                <button onclick="setSabbathStage('warning')" class="px-3 py-2 bg-orange-100 rounded text-[10px] font-bold text-orange-700">5m: Warning</button>
+                <button onclick="setSabbathStage('sabbath')" class="px-3 py-2 bg-indigo-100 rounded text-[10px] font-bold text-indigo-700">0m: Sunset</button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- PWA Bottom Navigation -->
+    <nav class="bg-white border-t border-slate-100 pb-safe fixed bottom-0 w-full z-30">
+        <div class="flex justify-around items-center h-16">
+            <button class="flex flex-col items-center gap-1 text-sda-600 w-full">
+                <i data-lucide="home" class="w-5 h-5 fill-current"></i>
+                <span class="text-[10px] font-medium">Home</span>
+            </button>
+            <button onclick="openModal('bible')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 w-full active:text-sda-600 transition">
+                <i data-lucide="book-open-check" class="w-5 h-5"></i>
+                <span class="text-[10px] font-medium">Bible</span>
+            </button>
+            <!-- Center Action Button -->
+            <button onclick="openModal('giving')" class="flex flex-col items-center justify-center -mt-6 w-14 h-14 bg-sda-600 rounded-full shadow-lg shadow-sda-600/30 text-white transform active:scale-95 transition border-4 border-gray-50">
+                <i data-lucide="heart" class="w-6 h-6"></i>
+            </button>
+            <button onclick="openModal('events')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 w-full active:text-sda-600 transition">
+                <i data-lucide="calendar" class="w-5 h-5"></i>
+                <span class="text-[10px] font-medium">Events</span>
+            </button>
+            <button onclick="openModal('profile')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 w-full active:text-sda-600 transition">
+                <i data-lucide="user" class="w-5 h-5"></i>
+                <span class="text-[10px] font-medium">Profile</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- SABBATH OVERLAY -->
+    <div id="sabbath-overlay" class="fixed inset-0 z-[60] bg-indigo-900 text-white hidden flex-col items-center justify-center text-center p-8 sabbath-bg opacity-0 transition-opacity duration-1000">
+        <div class="mb-8 animate-pulse-slow">
+            <i data-lucide="sunset" class="w-24 h-24 text-orange-300"></i>
+        </div>
+        <h2 class="text-sm font-bold uppercase tracking-[0.3em] text-indigo-200 mb-4 animate-fade-in">Holy Time Has Begun</h2>
+        <h1 class="text-5xl font-serif font-bold text-white mb-6 leading-tight animate-fade-in" style="animation-delay: 0.5s">Happy<br>Sabbath</h1>
+        <p class="text-indigo-100 max-w-xs mx-auto text-lg font-reader leading-relaxed animate-fade-in" style="animation-delay: 1s">"Remember the sabbath day, to keep it holy."</p>
+        <button onclick="dismissSabbathOverlay()" class="mt-12 px-8 py-3 border border-white/20 rounded-full text-sm font-bold tracking-widest hover:bg-white/10 transition animate-fade-in" style="animation-delay: 2s">ENTER REST</button>
+    </div>
+
+    <!-- 1. GIVING MODAL -->
+    <div id="giving-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeModal('giving')"></div>
+        <div class="absolute bottom-0 w-full bg-white rounded-t-3xl p-6 pb-12 animate-slide-up shadow-2xl h-[85vh] overflow-y-auto">
+            <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+            <!-- STEP 1: FORM -->
+            <div id="giving-step-1">
+                <div class="text-center mb-6">
+                    <h3 class="text-xl font-serif font-bold text-slate-900">Tithe & Offering</h3>
+                    <p class="text-xs text-slate-500">Secure GCash / Bank Transfer</p>
+                </div>
+                <div class="space-y-3">
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">10%</div>
+                            <div><p class="text-sm font-bold text-slate-900">Tithe</p><p class="text-[10px] text-slate-500">Conference Fund</p></div>
+                        </div>
+                        <div class="flex items-center gap-2"><span class="text-slate-400 text-sm font-bold">₱</span><input type="tel" placeholder="0" class="w-24 bg-white border border-slate-200 rounded p-2 text-right font-mono text-sm focus:outline-none focus:border-sda-600"></div>
+                    </div>
+                    <!-- Additional fields... -->
+                </div>
+                <div class="mt-6 flex justify-between items-center px-2">
+                    <span class="text-sm text-slate-500 font-medium">Total (PHP)</span>
+                    <span class="text-xl font-bold text-slate-900 font-mono">₱0.00</span>
+                </div>
+                <button onclick="processGiving()" class="w-full mt-6 bg-sda-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-sda-600/20 active:scale-[0.98] transition flex items-center justify-center gap-2">
+                    <i data-lucide="check-circle" class="w-5 h-5"></i> Confirm Offering
+                </button>
+            </div>
+            <!-- STEP 2: BLESSING & RECEIPT -->
+            <div id="giving-step-2" class="hidden text-center pt-4">
+                <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse-slow"><i data-lucide="check" class="w-10 h-10"></i></div>
+                <h3 class="text-2xl font-bold text-slate-900 mb-2">Received!</h3>
+                <p class="text-sm text-slate-500 mb-8">Thank you for your faithfulness.</p>
+                <div class="bg-indigo-50 border border-indigo-100 p-6 rounded-2xl mb-8 relative">
+                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">Bible Promise</div>
+                    <p id="blessing-text" class="text-indigo-900 font-serif text-lg leading-relaxed italic mb-4">"Bring ye all the tithes..."</p>
+                    <p id="blessing-ref" class="text-xs font-bold text-indigo-500 uppercase tracking-wide">Malachi 3:10</p>
+                </div>
+                <div class="space-y-3">
+                    <button onclick="downloadReceipt()" class="w-full py-4 bg-slate-900 text-white font-bold rounded-xl shadow-lg active:scale-[0.98] transition flex items-center justify-center gap-2"><i data-lucide="file-text" class="w-5 h-5"></i> Download Official Receipt (PDF)</button>
+                    <button onclick="closeModal('giving')" class="w-full py-4 text-slate-500 font-bold rounded-xl hover:bg-slate-50 transition">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. BIBLE MODAL -->
+    <div id="bible-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-white animate-slide-up flex flex-col h-full">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white z-10 sticky top-0">
+                <button onclick="closeModal('bible')" class="p-2 -ml-2 text-slate-600"><i data-lucide="chevron-down" class="w-6 h-6"></i></button>
+                <div class="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full"><span class="text-sm font-bold text-slate-900">Psalm 91</span></div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 pb-24 font-reader text-lg leading-loose text-slate-800">
+                <h2 class="text-2xl font-bold mb-6 text-center font-serif">Psalm 91</h2>
+                <p class="mb-4">He that dwelleth in the secret place of the most High shall abide under the shadow of the Almighty.</p>
+                <!-- content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. LESSON MODAL -->
+    <div id="lesson-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-white animate-slide-up flex flex-col h-full bg-slate-50">
+            <!-- Header... -->
+            <div class="bg-sda-900 text-white px-4 py-4 pt-12 pb-6 shadow-md relative overflow-hidden">
+                <div class="flex justify-between items-start relative z-10"><button onclick="closeModal('lesson')" class="p-2 -ml-2 text-white/80"><i data-lucide="arrow-left" class="w-6 h-6"></i></button></div>
+                <h2 class="text-2xl font-serif font-bold mt-2">Psalms of Deliverance</h2>
+            </div>
+            <div class="flex-1 overflow-y-auto p-5 pb-24">
+                <h3 class="text-xl font-bold text-slate-900 mb-4 font-serif">Sunday: The Lord Hears</h3>
+                <!-- Content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. AUDIO MODAL -->
+    <div id="audio-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-white animate-slide-up flex flex-col h-full">
+            <div class="bg-indigo-900 text-white p-6 pt-12 shadow-lg">
+                <div class="flex justify-between items-start mb-4"><button onclick="closeModal('audio')" class="p-2 -ml-2 bg-white/10 rounded-full"><i data-lucide="chevron-down" class="w-8 h-8"></i></button></div>
+                <h2 class="text-3xl font-serif font-bold leading-tight">Steps to Christ</h2>
+            </div>
+            <!-- Player -->
+        </div>
+    </div>
+
+    <!-- 5. HYMNAL MODAL -->
+    <div id="hymnal-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-white animate-slide-up flex flex-col h-full">
+            <!-- Header -->
+            <div class="px-4 py-3 pt-12 border-b border-slate-100 bg-white sticky top-0 z-10 flex items-center gap-3">
+                 <button onclick="closeModal('hymnal')" class="p-2 -ml-2 text-slate-600"><i data-lucide="chevron-down" class="w-6 h-6"></i></button>
+                 <div class="flex-1 relative"><i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i><input type="text" placeholder="Number or Title..." class="w-full bg-slate-100 rounded-full py-2 pl-9 pr-4 text-sm font-medium"></div>
+            </div>
+            <div class="flex-1 overflow-y-auto"><div class="p-6 pb-24 text-center"><h2 class="text-2xl font-serif font-bold text-slate-900 mb-1">Joyful, Joyful, We Adore Thee</h2></div></div>
+        </div>
+    </div>
+
+    <!-- 6. WORSHIP MODAL -->
+    <div id="worship-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-white animate-slide-up flex flex-col h-full">
+            <div class="bg-orange-50 px-4 py-4 pt-12 shadow-sm border-b border-orange-100 transition-colors duration-300" id="worship-header">
+                <div class="flex justify-between items-center">
+                    <button onclick="closeModal('worship')" class="p-2 -ml-2 text-slate-600"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
+                    <div class="text-right"><p class="text-[10px] font-bold text-orange-600 uppercase tracking-widest transition-colors duration-300" id="worship-label">Daily Devotional</p></div>
+                </div>
+                <div class="flex gap-2 mt-4 bg-white p-1 rounded-xl border border-slate-100">
+                    <button onclick="switchWorshipTab('morning')" id="tab-morning" class="flex-1 py-2 rounded-lg bg-orange-100 text-orange-700 text-xs font-bold shadow-sm transition-all">Morning Watch</button>
+                    <button onclick="switchWorshipTab('evening')" id="tab-evening" class="flex-1 py-2 rounded-lg text-slate-400 text-xs font-bold hover:bg-slate-50 transition-all">Evening Watch</button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 pb-24 font-reader">
+                <div id="content-morning" class="animate-fade-in"><div class="text-center mb-8"><h2 class="text-2xl font-bold text-slate-900 mb-2 font-serif">Reflecting Christ</h2></div><!-- Content --></div>
+                <div id="content-evening" class="hidden animate-fade-in"><div class="text-center mb-8"><h2 class="text-2xl font-bold text-slate-900 mb-2 font-serif">Maranatha</h2></div><!-- Content --></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. TECH PREP MODAL -->
+    <div id="tech-prep-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-white animate-slide-up flex flex-col h-full bg-slate-50">
+            <!-- Header/Content -->
+            <div class="bg-white px-6 pt-12 pb-4 shadow-sm border-b border-slate-100"><div class="flex justify-between items-center mb-2"><button onclick="closeModal('tech-prep')" class="p-2 -ml-2 text-slate-600"><i data-lucide="arrow-left" class="w-6 h-6"></i></button><h2 class="text-lg font-bold text-slate-900">Digital Sabbath</h2></div></div>
+            <div class="flex-1 overflow-y-auto p-6 pb-24">
+                <div class="bg-indigo-900 rounded-2xl p-6 text-white shadow-xl mb-8"><h3 class="font-bold text-lg">Focus Mode</h3><p class="text-indigo-200 text-sm mb-6">Silence distractions.</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. OFFICER MODAL -->
+    <div id="officer-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-slate-900 animate-slide-up flex flex-col h-full text-white">
+            <div class="px-6 pt-12 pb-6 border-b border-slate-800 bg-slate-900 sticky top-0 z-10">
+                <div class="flex justify-between items-center mb-4"><button onclick="closeModal('officer')" class="p-2 -ml-2 text-slate-400 hover:text-white transition"><i data-lucide="x" class="w-8 h-8"></i></button></div>
+                <h2 class="text-3xl font-serif font-bold text-white">Officer Kiosk</h2>
+            </div>
+            <!-- Content -->
+        </div>
+    </div>
+
+    <!-- 9. EVENTS MODAL (Centennial) -->
+    <div id="events-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-white animate-slide-up flex flex-col h-full">
+            <div class="bg-slate-900 text-amber-400 px-6 pt-12 pb-8 relative overflow-hidden shadow-lg">
+                <div class="flex justify-between items-start relative z-10"><button onclick="closeModal('events')" class="p-2 -ml-2 text-amber-100/50 hover:text-white transition"><i data-lucide="chevron-down" class="w-8 h-8"></i></button></div>
+                <h2 class="text-3xl font-serif font-bold mt-4 text-white leading-tight">100 Years<br><span class="text-amber-400">of Grace</span></h2>
+            </div>
+            <!-- Timeline -->
+        </div>
+    </div>
+
+    <!-- 10. PROFILE MODAL -->
+    <div id="profile-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-slate-50 animate-slide-up flex flex-col h-full">
+            <div class="bg-white px-6 pt-12 pb-6 shadow-sm sticky top-0 z-10">
+                <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-serif font-bold text-slate-900">My Profile</h2><button onclick="closeModal('profile')" class="p-2 -mr-2 text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-6 h-6"></i></button></div>
+                <div class="flex items-center gap-4"><div class="w-16 h-16 rounded-full bg-sda-100 border-2 border-white shadow-sm flex items-center justify-center text-sda-600 text-xl font-bold">JD</div><div><h3 class="font-bold text-slate-900 text-lg">Juan Dela Cruz</h3><p class="text-xs text-sda-600 font-bold uppercase tracking-wide">Sabbath School Teacher</p></div></div>
+            </div>
+            <!-- Content -->
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // --- GLOBAL VARIABLES & CONFIG ---
+        // Mock Tenant Database
+        const TENANTS = {
+            'batangas': { name: 'Batangas City Central', type: 'SDA Church', location: 'Batangas City', lat: 13.7565, lng: 121.0583 },
+            'manila': { name: 'Manila Center', type: 'Metro Church', location: 'Manila', lat: 14.5995, lng: 120.9842 },
+            'jeddah': { name: 'Jeddah Intl. Fellowship', type: 'Global Church', location: 'Jeddah, KSA', lat: 21.4858, lng: 39.1925 } // User's current location context
+        };
+
+        // --- LOCATION & TENANT LOGIC ---
+        function triggerSmartCheckIn() {
+            // Visual feedback on the GPS icon
+            const gpsIcon = document.getElementById('gps-indicator');
+            gpsIcon.classList.remove('hidden');
+            
+            showToast("Searching...", "Locating nearest FaithHub church...", "map-pin");
+
+            if (!navigator.geolocation) {
+                showToast("Error", "Geolocation not supported.", "alert-circle");
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    
+                    // Simple logic: If we are in the mock list (or close to it), switch.
+                    // Since we can't do complex Haversine math easily here without writing a big function,
+                    // we will simulate the discovery based on the user's implicit location (Jeddah).
+                    
+                    // Note: In a real app, we calculate distance here.
+                    // For prototype demo: We assume if they clicked this, they want to switch to "Local" context.
+                    
+                    // Simulate finding Jeddah
+                    const nearest = TENANTS['jeddah']; 
+                    
+                    // Update the UI to match the new tenant
+                    setTimeout(() => {
+                        updateAppTenant(nearest);
+                        gpsIcon.classList.add('hidden');
+                        showToast("Welcome!", `Checked in to ${nearest.name}`, "check-circle");
+                    }, 1500); // Fake network delay
+                },
+                (error) => {
+                    gpsIcon.classList.add('hidden');
+                    showToast("Location Error", "Could not detect location.", "slash");
+                }
+            );
+        }
+
+        function updateAppTenant(tenant) {
+            // 1. Update Header
+            document.getElementById('church-name').innerText = tenant.name;
+            document.getElementById('location-label').innerHTML = `<i data-lucide="map-pin" class="w-3 h-3"></i> ${tenant.location} • Sunset`;
+            
+            // 2. Simulate Sunset Time update for Jeddah
+            // (In real app, this calls the API again with new coords)
+            document.getElementById('sunset-time-display').innerText = "6:15 PM"; 
+            
+            // 3. Update Logo Color (Visual cue of switch)
+            const logo = document.getElementById('church-logo');
+            logo.classList.remove('bg-sda-600');
+            logo.classList.add('bg-indigo-600'); // Different color for Jeddah
+            
+            lucide.createIcons();
+        }
+
+        // --- MODAL LOGIC ---
+        function openModal(id) {
+            ['giving', 'bible', 'lesson', 'audio', 'hymnal', 'worship', 'tech-prep', 'officer', 'events', 'profile'].forEach(m => {
+                if(m !== id) document.getElementById(m + '-modal').classList.add('hidden');
+            });
+            // Reset states
+            if(id === 'giving') {
+                document.getElementById('giving-step-1').classList.remove('hidden');
+                document.getElementById('giving-step-2').classList.add('hidden');
+            }
+            document.getElementById(id + '-modal').classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id + '-modal').classList.add('hidden');
+        }
+
+        // --- GIVING LOGIC ---
+        const GIVING_PROMISES = [
+            { text: "\"Bring ye all the tithes into the storehouse... and prove me now herewith, saith the LORD of hosts.\"", ref: "Malachi 3:10" },
+            { text: "\"For God loveth a cheerful giver.\"", ref: "2 Corinthians 9:7" }
+        ];
+        function processGiving() {
+            document.getElementById('giving-step-1').classList.add('hidden');
+            document.getElementById('giving-step-2').classList.remove('hidden');
+            const random = GIVING_PROMISES[Math.floor(Math.random() * GIVING_PROMISES.length)];
+            document.getElementById('blessing-text').innerText = random.text;
+            document.getElementById('blessing-ref').innerText = random.ref;
+        }
+        function downloadReceipt() {
+            showToast("Receipt Downloaded", "PDF Receipt saved to device.", "file-check");
+        }
+
+        // --- SABBATH PROTOCOL LOGIC ---
+        const SABBATH_STAGES = {
+            'prep': { colorClass: 'from-blue-600 to-blue-400', statusText: 'Preparation Call', subText: 'Wrap up work • 30m Remaining', timer: '00:30:00', progress: '50%', progressColor: 'bg-blue-300', toast: { title: 'Preparation Call', msg: 'Sunset in 30 mins.', icon: 'bell' } },
+            'ready': { colorClass: 'from-yellow-600 to-yellow-500', statusText: 'Household Ready', subText: 'Candle Prep • 18m Remaining', timer: '00:18:00', progress: '70%', progressColor: 'bg-yellow-300', toast: { title: 'Household Ready', msg: '18 mins to sunset.', icon: 'flame' } },
+            'warning': { colorClass: 'from-orange-600 to-orange-500', statusText: 'Final Warning', subText: 'Sunset Imminent • 5m Remaining', timer: '00:05:00', progress: '90%', progressColor: 'bg-orange-300', toast: { title: 'Final Warning', msg: '5 mins remaining.', icon: 'alert-triangle' } },
+            'sabbath': { colorClass: 'from-indigo-900 to-purple-800', statusText: 'Sabbath Entered', subText: 'Holy Time', timer: '00:00:00', progress: '100%', progressColor: 'bg-indigo-300', toast: null }
+        };
+        function setSabbathStage(stageKey) {
+            const config = SABBATH_STAGES[stageKey];
+            const widget = document.getElementById('sunset-widget');
+            const statusEl = document.getElementById('sunset-stage-badge');
+            const subTextEl = statusEl.nextElementSibling.nextElementSibling;
+            const timerEl = document.getElementById('countdown-timer');
+            const progressEl = document.getElementById('sunset-progress');
+
+            widget.className = `rounded-2xl p-5 text-white shadow-lg relative overflow-hidden transition-all duration-1000 bg-gradient-to-br ${config.colorClass}`;
+            statusEl.querySelector('span').innerText = config.statusText;
+            subTextEl.innerText = config.subText;
+            timerEl.innerText = config.timer;
+            progressEl.className = `h-full w-[${config.progress}] transition-all duration-1000 ${config.progressColor}`;
+            progressEl.style.width = config.progress;
+
+            if (stageKey === 'sabbath') {
+                const overlay = document.getElementById('sabbath-overlay');
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+                void overlay.offsetWidth; 
+                overlay.classList.remove('opacity-0');
+                overlay.classList.add('opacity-100');
+            } else {
+                showToast(config.toast.title, config.toast.msg, config.toast.icon);
+            }
+        }
+        function dismissSabbathOverlay() {
+            const overlay = document.getElementById('sabbath-overlay');
+            overlay.classList.remove('flex');
+            overlay.classList.add('hidden');
+        }
+
+        // --- OFFICER LOGIC ---
+        let count = 124;
+        function updateCount(diff) {
+            count += diff;
+            document.getElementById('headcount-display').innerText = count;
+        }
+
+        // --- WORSHIP TABS ---
+        function switchWorshipTab(type) {
+            const morningTab = document.getElementById('tab-morning');
+            const eveningTab = document.getElementById('tab-evening');
+            const morningContent = document.getElementById('content-morning');
+            const eveningContent = document.getElementById('content-evening');
+            const header = document.getElementById('worship-header');
+            const label = document.getElementById('worship-label');
+
+            if (type === 'morning') {
+                morningTab.className = 'flex-1 py-2 rounded-lg bg-orange-100 text-orange-700 text-xs font-bold shadow-sm transition-all';
+                eveningTab.className = 'flex-1 py-2 rounded-lg text-slate-400 text-xs font-bold hover:bg-slate-50 transition-all';
+                morningContent.classList.remove('hidden');
+                eveningContent.classList.add('hidden');
+                header.className = 'bg-orange-50 px-4 py-4 pt-12 shadow-sm border-b border-orange-100 transition-colors duration-300';
+                label.className = 'text-[10px] font-bold text-orange-600 uppercase tracking-widest transition-colors duration-300';
+            } else {
+                eveningTab.className = 'flex-1 py-2 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-bold shadow-sm transition-all';
+                morningTab.className = 'flex-1 py-2 rounded-lg text-slate-400 text-xs font-bold hover:bg-slate-50 transition-all';
+                eveningContent.classList.remove('hidden');
+                morningContent.classList.add('hidden');
+                header.className = 'bg-indigo-50 px-4 py-4 pt-12 shadow-sm border-b border-indigo-100 transition-colors duration-300';
+                label.className = 'text-[10px] font-bold text-indigo-600 uppercase tracking-widest transition-colors duration-300';
+            }
+        }
+
+        // --- UTIL ---
+        function showToast(title, message, iconName) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'bg-white border-l-4 border-sda-600 text-slate-800 p-4 rounded shadow-xl flex items-start gap-3 transform transition-all duration-500 translate-y-[-20px] opacity-0';
+            toast.innerHTML = `<div class="text-sda-600 mt-1"><i data-lucide="${iconName}" class="w-5 h-5"></i></div><div><h4 class="font-bold text-sm">${title}</h4><p class="text-xs text-slate-500">${message}</p></div>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            requestAnimationFrame(() => toast.classList.remove('translate-y-[-20px]', 'opacity-0'));
+            setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-[100px]'); setTimeout(() => toast.remove(), 500); }, 4000);
+        }
+    </script>
+</body>
+</html>
+
+
+
+
