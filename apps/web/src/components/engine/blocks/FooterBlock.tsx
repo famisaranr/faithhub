@@ -70,7 +70,7 @@ export const FooterBlock = ({ section }: { section: SectionConfig & { type: "foo
                                 Sponsored by: Russell B. Famisaran
                             </span>
                             <a
-                                href="https://faithhub.com/landing"
+                                href="https://www.ourfaithhub.com/landing"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs font-semibold text-gold hover:text-white transition-colors flex items-center gap-1 group/link"

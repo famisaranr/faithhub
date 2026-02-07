@@ -25,7 +25,8 @@ export function middleware(req: NextRequest) {
 
     // Rewrites for app pages
     // SINGLE TENANT MODE: If SINGLE_TENANT_SLUG is set, force all traffic to that tenant
-    if (process.env.SINGLE_TENANT_SLUG) {
+    // SINGLE TENANT MODE: If SINGLE_TENANT_SLUG is set, force all traffic to that tenant
+    if (process.env.SINGLE_TENANT_SLUG && !path.startsWith("/landing")) {
         return NextResponse.rewrite(
             new URL(`/${process.env.SINGLE_TENANT_SLUG}${path}`, req.url)
         );
