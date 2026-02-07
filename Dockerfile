@@ -23,8 +23,8 @@ FROM base AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=prune /repo/out/full/ ./
-ENV NODE_ENV=production
 RUN cd apps/web && pnpm run db:generate
+ENV NODE_ENV=production
 RUN pnpm turbo run build --filter=web...
 
 FROM node:20-bookworm-slim AS runner
