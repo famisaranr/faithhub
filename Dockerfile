@@ -24,7 +24,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=prune /repo/out/full/ ./
 ENV NODE_ENV=production
-RUN pnpm exec prisma generate --schema=apps/web/prisma/schema.prisma
+RUN pnpm turbo run db:generate --filter=web
 RUN pnpm turbo run build --filter=web...
 
 FROM node:20-bookworm-slim AS runner
