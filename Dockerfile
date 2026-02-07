@@ -10,7 +10,7 @@ FROM base AS prune
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY . .
-RUN pnpm dlx turbo@latest prune --scope=apps/web --docker
+RUN pnpm dlx turbo@latest prune --scope=web --docker
 
 FROM base AS deps
 WORKDIR /app
