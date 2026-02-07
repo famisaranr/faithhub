@@ -5,6 +5,7 @@ WORKDIR /repo
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
+RUN apt-get update -y && apt-get install -y openssl
 
 FROM base AS prune
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
@@ -23,12 +24,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=prune /repo/out/full/ ./
 ENV NODE_ENV=production
-RUN ./node_modules/.bin/prisma generate --schema=apps/web/prisma/schema.prisma
+RUN npx prisma generate --schema=apps/web/prisma/schema.prisma
 RUN pnpm turbo run build --filter=web...
 
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apt-get update -y && apt-get install -y openssl
 RUN useradd -m nextjs && chown -R nextjs:nextjs /app
 USER nextjs
 
