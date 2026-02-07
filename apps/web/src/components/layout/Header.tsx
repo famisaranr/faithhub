@@ -72,7 +72,7 @@ export function Header() {
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        theme={{ duration: 0.2 }}
+                        transition={{ duration: 0.2 }}
                         className="absolute inset-0 top-0 left-0 w-full h-screen bg-secondary/95 backdrop-blur-xl flex flex-col items-center justify-center gap-8 md:hidden z-40"
                     >
                         {menuItems.map((item) => (
