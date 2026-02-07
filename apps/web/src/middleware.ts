@@ -24,6 +24,14 @@ export function middleware(req: NextRequest) {
     const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ""}`;
 
     // Rewrites for app pages
+    // SINGLE TENANT MODE: If SINGLE_TENANT_SLUG is set, force all traffic to that tenant
+    if (process.env.SINGLE_TENANT_SLUG) {
+        return NextResponse.rewrite(
+            new URL(`/${process.env.SINGLE_TENANT_SLUG}${path}`, req.url)
+        );
+    }
+
+    // MULTI TENANT MODE: Use hostname to determine tenant
     // IF HOST IS NOT ROOT DOMAIN
     if (!isRootDomain && hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN) {
         // Dynamic Tenant Routing
