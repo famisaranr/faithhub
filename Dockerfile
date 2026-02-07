@@ -17,6 +17,7 @@ FROM base AS deps
 WORKDIR /app
 COPY --from=prune /repo/out/json/ ./
 COPY --from=prune /repo/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=prune /repo/apps/web/prisma/schema.prisma ./apps/web/prisma/schema.prisma
 RUN pnpm install --no-frozen-lockfile
 
 FROM base AS build
