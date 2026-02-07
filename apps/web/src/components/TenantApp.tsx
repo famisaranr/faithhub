@@ -24,7 +24,7 @@ export const TenantApp = ({ config, tenant }: TenantAppProps) => {
 
     // Centennial Logic: check slug or specific flag.
     // Ideally this should be data-driven, e.g. tenant.features.marketingSite
-    const hasMarketingSite = tenant?.slug === 'batangas';
+    const hasMarketingSite = tenant?.slug === 'batangas' || tenant?.slug === 'batangas-city-central';
 
     if (view === 'marketing-site') {
         return (
