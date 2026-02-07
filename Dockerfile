@@ -17,7 +17,7 @@ FROM base AS deps
 WORKDIR /app
 COPY --from=prune /repo/out/json/ ./
 COPY --from=prune /repo/out/pnpm-lock.yaml ./pnpm-lock.yaml
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 FROM base AS build
 WORKDIR /app
