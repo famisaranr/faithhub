@@ -47,7 +47,7 @@ export const MapBlock = ({ section }: { section: SectionConfig & { type: "map" }
     const position: [number, number] = [13.7565, 121.0583];
 
     return (
-        <section id={section.id} className="py-0 relative h-[600px] w-full bg-background flex flex-col md:flex-row border-y border-white/5">
+        <section id={section.id} className="py-0 relative h-auto md:h-[600px] w-full bg-background flex flex-col md:flex-row border-y border-white/5">
             {/* Info Overlay / Side Panel */}
             <div className="w-full md:w-1/3 bg-secondary p-12 flex flex-col justify-center order-2 md:order-1 z-10 shadow-2xl relative">
                 {/* Decorative border */}
