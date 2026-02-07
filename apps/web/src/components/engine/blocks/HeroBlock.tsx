@@ -86,14 +86,28 @@ export const HeroBlock = ({ section }: { section: SectionConfig & { type: "hero"
                     </h2>
                 </motion.div>
 
-                <motion.h1
-                    className="text-6xl md:text-8xl font-heading font-bold text-white tracking-tight drop-shadow-2xl mb-2"
+                <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 1.2, delay: 0.2, ease: "easeOut" }}
+                    className="mb-8"
                 >
-                    {section.title}
-                </motion.h1>
+                    {section.title.includes(":") ? (
+                        <>
+                            <h1 className="text-4xl md:text-6xl font-heading font-bold text-white tracking-wide drop-shadow-2xl leading-tight">
+                                {section.title.split(":")[0]}
+                            </h1>
+                            <div className="w-24 h-1 bg-gold mx-auto my-6 rounded-full opacity-80" />
+                            <h2 className="text-2xl md:text-3xl font-serif italic text-gray-200 tracking-wider">
+                                {section.title.split(":")[1]}
+                            </h2>
+                        </>
+                    ) : (
+                        <h1 className="text-5xl md:text-7xl font-heading font-bold text-white tracking-tight drop-shadow-2xl">
+                            {section.title}
+                        </h1>
+                    )}
+                </motion.div>
 
                 {/* Dynamic Countdown */}
                 {section.countdownTarget && (
