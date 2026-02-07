@@ -231,6 +231,7 @@ export default function HomePage() {
                 </section>
 
                 {/* Pricing */}
+                {/* Pricing - Temporarily Hidden
                 <section id="pricing" className="py-24 border-t border-white/5 bg-secondary/20">
                     <div className="max-w-7xl mx-auto px-6">
                         <div className="text-center mb-16">
@@ -275,6 +276,7 @@ export default function HomePage() {
                         </div>
                     </div>
                 </section>
+                */}
 
                 <section className="py-32 text-center">
                     <h2 className="text-4xl font-heading font-bold mb-8">Ready to modernize your ministry?</h2>
