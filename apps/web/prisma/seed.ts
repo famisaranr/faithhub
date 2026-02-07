@@ -412,20 +412,20 @@ async function main() {
     ]
 
     for (const member of membersData) {
-        await prisma.member.create({
-            data: member
-        })
+        const exists = await prisma.member.findFirst({
+            where: { email: member.email, tenantId: member.tenantId }
+        });
+        if (!exists) {
+            await prisma.member.create({
+                data: member
+            })
+        }
     }
 
     // 3. Seed Service Plans
     const nextSabbath = new Date();
     nextSabbath.setDate(nextSabbath.getDate() + (6 - nextSabbath.getDay() + 7) % 7);
     nextSabbath.setHours(9, 0, 0, 0);
-
-    // Clear existing plans to avoid duplicates
-    await prisma.servicePlan.deleteMany({
-        where: { tenantId: tenant.id }
-    });
 
     const nextFriday = new Date(nextSabbath);
     nextFriday.setDate(nextSabbath.getDate() - 1);
@@ -435,90 +435,92 @@ async function main() {
     nextWednesday.setDate(nextSabbath.getDate() - 3); // Wednesday BEFORE Sabbath
     nextWednesday.setHours(19, 0, 0, 0);
 
-    // 1. Vespers (Friday Night)
-    await prisma.servicePlan.create({
-        data: {
-            tenantId: tenant.id,
-            date: nextFriday,
-            type: "vespers",
-            title: "Vespers (Opening Sabbath)",
-            items: [
-                { time: "19:00", title: "Song Service", description: "Music Team", presenter: "Youth Dept", action: "sing" },
-                { time: "19:15", title: "Unfolding Faith", description: "Testimonial", presenter: "Sis. Cruz", action: "speak" },
-                { time: "19:30", title: "Message", description: "Speaker", presenter: "Elder Santos", action: "preach" },
-                { time: "20:00", title: "Garden of Prayer", description: "Congregation", presenter: "Elder Santos", action: "pray" },
-            ]
+    // Helper to conditionally create plans
+    const createPlanIfMissing = async (data: any) => {
+        const exists = await prisma.servicePlan.findFirst({
+            where: {
+                tenantId: data.tenantId,
+                date: data.date,
+                type: data.type
+            }
+        });
+        if (!exists) {
+            await prisma.servicePlan.create({ data });
         }
-    })
+    };
+
+    // 1. Vespers (Friday Night)
+    await createPlanIfMissing({
+        tenantId: tenant.id,
+        date: nextFriday,
+        type: "vespers",
+        title: "Vespers (Opening Sabbath)",
+        items: [
+            { time: "19:00", title: "Song Service", description: "Music Team", presenter: "Youth Dept", action: "sing" },
+            { time: "19:15", title: "Unfolding Faith", description: "Testimonial", presenter: "Sis. Cruz", action: "speak" },
+            { time: "19:30", title: "Message", description: "Speaker", presenter: "Elder Santos", action: "preach" },
+            { time: "20:00", title: "Garden of Prayer", description: "Congregation", presenter: "Elder Santos", action: "pray" },
+        ]
+    });
 
     // 2 & 3. Sabbath Services (Divine Worship, Sabbath School, AYS)
-    // ... existing code follows ...
+    await createPlanIfMissing({
+        tenantId: tenant.id,
+        date: nextSabbath,
+        type: "divine_worship",
+        title: "Divine Worship Service",
+        items: [
+            { time: "10:45", title: "Prelude", description: "Organist", presenter: "Sis. Cruz", action: "play" },
+            { time: "10:55", title: "Introit", description: "Choir", presenter: "BCC Choir", action: "sing" },
+            { time: "11:00", title: "Invocation", description: "Elder on Duty", presenter: "Bro. Santos", action: "preach" },
+            { time: "11:05", title: "Welcome Remarks", description: "Clerk", presenter: "Sis. Reyes", action: "speak" },
+            { time: "11:15", title: "Opening Hymn", description: "Congregation", presenter: "Chorister", action: "sing" },
+            { time: "11:45", title: "Sermon", description: "Pastor", presenter: "Ptr. Garcia", action: "preach" },
+            { time: "12:15", title: "Closing Hymn", description: "Congregation", presenter: "Chorister", action: "sing" },
+            { time: "12:20", title: "Benediction", description: "Pastor", presenter: "Ptr. Garcia", action: "pray" },
+        ]
+    });
 
-    await prisma.servicePlan.create({
-        data: {
-            tenantId: tenant.id,
-            date: nextSabbath,
-            type: "divine_worship",
-            title: "Divine Worship Service",
-            items: [
-                { time: "10:45", title: "Prelude", description: "Organist", presenter: "Sis. Cruz", action: "play" },
-                { time: "10:55", title: "Introit", description: "Choir", presenter: "BCC Choir", action: "sing" },
-                { time: "11:00", title: "Invocation", description: "Elder on Duty", presenter: "Bro. Santos", action: "preach" },
-                { time: "11:05", title: "Welcome Remarks", description: "Clerk", presenter: "Sis. Reyes", action: "speak" },
-                { time: "11:15", title: "Opening Hymn", description: "Congregation", presenter: "Chorister", action: "sing" },
-                { time: "11:45", title: "Sermon", description: "Pastor", presenter: "Ptr. Garcia", action: "preach" },
-                { time: "12:15", title: "Closing Hymn", description: "Congregation", presenter: "Chorister", action: "sing" },
-                { time: "12:20", title: "Benediction", description: "Pastor", presenter: "Ptr. Garcia", action: "pray" },
-            ]
-        }
-    })
+    await createPlanIfMissing({
+        tenantId: tenant.id,
+        date: nextSabbath,
+        type: "sabbath_school",
+        title: "Sabbath School",
+        items: [
+            { time: "09:00", title: "Song Service", description: "Music Team", presenter: "Music Dept", action: "sing" },
+            { time: "09:15", title: "Opening Prayer", description: "Superintendent", presenter: "Sis. Go", action: "pray" },
+            { time: "09:20", title: "Mission Story", description: "Mission Dept", presenter: "Bro. Lim", action: "speak" },
+            { time: "09:35", title: "Lesson Study", description: "Classes", presenter: "Teachers", action: "teach" },
+            { time: "10:35", title: "Closing Thought", description: "Superintendent", presenter: "Sis. Go", action: "speak" },
+        ]
+    });
 
-    await prisma.servicePlan.create({
-        data: {
-            tenantId: tenant.id,
-            date: nextSabbath,
-            type: "sabbath_school",
-            title: "Sabbath School",
-            items: [
-                { time: "09:00", title: "Song Service", description: "Music Team", presenter: "Music Dept", action: "sing" },
-                { time: "09:15", title: "Opening Prayer", description: "Superintendent", presenter: "Sis. Go", action: "pray" },
-                { time: "09:20", title: "Mission Story", description: "Mission Dept", presenter: "Bro. Lim", action: "speak" },
-                { time: "09:35", title: "Lesson Study", description: "Classes", presenter: "Teachers", action: "teach" },
-                { time: "10:35", title: "Closing Thought", description: "Superintendent", presenter: "Sis. Go", action: "speak" },
-            ]
-        }
-    })
+    await createPlanIfMissing({
+        tenantId: tenant.id,
+        date: nextSabbath,
+        type: "ays",
+        title: "AYS",
+        items: [
+            { time: "16:00", title: "Congregational Singing", description: "Youth Team", presenter: "Youth", action: "sing" },
+            { time: "16:15", title: "Devotional", description: "Youth Leader", presenter: "Bro. Young", action: "speak" },
+            { time: "16:30", title: "Activity / Bible Game", description: "Socials Team", presenter: "Sis. Happy", action: "play" },
+            { time: "17:15", title: "Vespers Message", description: "Elder", presenter: "Elder Tan", action: "preach" },
+            { time: "17:45", title: "Closing Prayer", description: "Youth Leader", presenter: "Bro. Young", action: "pray" },
+        ]
+    });
 
-    await prisma.servicePlan.create({
-        data: {
-            tenantId: tenant.id,
-            date: nextSabbath,
-            type: "ays",
-            title: "AYS",
-            items: [
-                { time: "16:00", title: "Congregational Singing", description: "Youth Team", presenter: "Youth", action: "sing" },
-                { time: "16:15", title: "Devotional", description: "Youth Leader", presenter: "Bro. Young", action: "speak" },
-                { time: "16:30", title: "Activity / Bible Game", description: "Socials Team", presenter: "Sis. Happy", action: "play" },
-                { time: "17:15", title: "Vespers Message", description: "Elder", presenter: "Elder Tan", action: "preach" },
-                { time: "17:45", title: "Closing Prayer", description: "Youth Leader", presenter: "Bro. Young", action: "pray" },
-            ]
-        }
-    })
-
-    await prisma.servicePlan.create({
-        data: {
-            tenantId: tenant.id,
-            date: nextWednesday,
-            type: "midweek",
-            title: "Midweek Prayer Meeting",
-            items: [
-                { time: "19:00", title: "Song Service", description: "Music Team", presenter: "Praise Team", action: "sing" },
-                { time: "19:15", title: "Devotional", description: "Speaker", presenter: "Ptr. Garcia", action: "preach" },
-                { time: "19:45", title: "Prayer Bands", description: "Groups", presenter: "All", action: "pray" },
-                { time: "20:15", title: "Testimonies", description: "Open Mic", presenter: "Brethren", action: "speak" },
-            ]
-        }
-    })
+    await createPlanIfMissing({
+        tenantId: tenant.id,
+        date: nextWednesday,
+        type: "midweek",
+        title: "Midweek Prayer Meeting",
+        items: [
+            { time: "19:00", title: "Song Service", description: "Music Team", presenter: "Praise Team", action: "sing" },
+            { time: "19:15", title: "Devotional", description: "Speaker", presenter: "Ptr. Garcia", action: "preach" },
+            { time: "19:45", title: "Prayer Bands", description: "Groups", presenter: "All", action: "pray" },
+            { time: "20:15", title: "Testimonies", description: "Open Mic", presenter: "Brethren", action: "speak" },
+        ]
+    });
 
     // 4. Seed Inventory
     const inventoryData = [
@@ -530,9 +532,13 @@ async function main() {
     ]
 
     for (const item of inventoryData) {
-        await prisma.inventoryItem.create({
-            data: item
-        })
+        // Check for existing inventory item by name and tenant
+        const exists = await prisma.inventoryItem.findFirst({
+            where: { name: item.name, tenantId: item.tenantId }
+        });
+        if (!exists) {
+            await prisma.inventoryItem.create({ data: item });
+        }
     }
 
     // 5. Seed Alerts
@@ -543,9 +549,13 @@ async function main() {
     ]
 
     for (const alert of alertsData) {
-        await prisma.officerAlert.create({
-            data: alert
-        })
+        // No easy unique key for alerts, but assuming title+message+tenant is unique enough for seeding
+        const exists = await prisma.officerAlert.findFirst({
+            where: { title: alert.title, message: alert.message, tenantId: alert.tenantId }
+        });
+        if (!exists) {
+            await prisma.officerAlert.create({ data: alert });
+        }
     }
 
     console.log('Seeding data for tenant: Laway Seventh Day Adventist Church')
@@ -587,55 +597,48 @@ async function main() {
     ]
 
     for (const member of membersLaway) {
-        await prisma.member.create({
-            data: member
-        })
+        const exists = await prisma.member.findFirst({
+            where: { email: member.email, tenantId: member.tenantId }
+        });
+        if (!exists) {
+            await prisma.member.create({ data: member })
+        }
     }
 
     // Seed Service Plans for Laway (Same dates as BCC)
-    await prisma.servicePlan.deleteMany({
-        where: { tenantId: tenantLaway.id }
+    // Vespers
+    await createPlanIfMissing({
+        tenantId: tenantLaway.id,
+        date: nextFriday,
+        type: "vespers",
+        title: "Vespers (Laway)",
+        items: [
+            { time: "19:00", title: "Song Service", description: "Laway Youth", presenter: "Youth", action: "sing" },
+            { time: "19:30", title: "Message", description: "Speaker", presenter: "Local Elder", action: "preach" },
+        ]
     });
 
-    // Vespers
-    await prisma.servicePlan.create({
-        data: {
-            tenantId: tenantLaway.id,
-            date: nextFriday,
-            type: "vespers",
-            title: "Vespers (Laway)",
-            items: [
-                { time: "19:00", title: "Song Service", description: "Laway Youth", presenter: "Youth", action: "sing" },
-                { time: "19:30", title: "Message", description: "Speaker", presenter: "Local Elder", action: "preach" },
-            ]
-        }
-    })
-
     // Divine Worship
-    await prisma.servicePlan.create({
-        data: {
-            tenantId: tenantLaway.id,
-            date: nextSabbath,
-            type: "divine_worship",
-            title: "Divine Worship Service",
-            items: [
-                { time: "11:00", title: "Divine Service", description: "Main Service", presenter: "District Pastor", action: "preach" },
-            ]
-        }
-    })
+    await createPlanIfMissing({
+        tenantId: tenantLaway.id,
+        date: nextSabbath,
+        type: "divine_worship",
+        title: "Divine Worship Service",
+        items: [
+            { time: "11:00", title: "Divine Service", description: "Main Service", presenter: "District Pastor", action: "preach" },
+        ]
+    });
 
     // Sabbath School
-    await prisma.servicePlan.create({
-        data: {
-            tenantId: tenantLaway.id,
-            date: nextSabbath,
-            type: "sabbath_school",
-            title: "Sabbath School",
-            items: [
-                { time: "09:00", title: "Lesson Study", description: "General Class", presenter: "SS Superintendent", action: "teach" },
-            ]
-        }
-    })
+    await createPlanIfMissing({
+        tenantId: tenantLaway.id,
+        date: nextSabbath,
+        type: "sabbath_school",
+        title: "Sabbath School",
+        items: [
+            { time: "09:00", title: "Lesson Study", description: "General Class", presenter: "SS Superintendent", action: "teach" },
+        ]
+    });
 
     // Inventory for Laway
     const inventoryLaway = [
@@ -644,15 +647,23 @@ async function main() {
     ]
 
     for (const item of inventoryLaway) {
-        await prisma.inventoryItem.create({
-            data: item
-        })
+        const exists = await prisma.inventoryItem.findFirst({
+            where: { name: item.name, tenantId: item.tenantId }
+        });
+        if (!exists) {
+            await prisma.inventoryItem.create({ data: item });
+        }
     }
 
     // Alerts for Laway
-    await prisma.officerAlert.create({
-        data: { type: "info", title: "Welcome", message: "Welcome to the new system!", isRead: false, tenantId: tenantLaway.id }
-    })
+    const exists = await prisma.officerAlert.findFirst({
+        where: { title: "Welcome", tenantId: tenantLaway.id }
+    });
+    if (!exists) {
+        await prisma.officerAlert.create({
+            data: { type: "info", title: "Welcome", message: "Welcome to the new system!", isRead: false, tenantId: tenantLaway.id }
+        })
+    }
 
     console.log('Done.')
 }
