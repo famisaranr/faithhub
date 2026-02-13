@@ -35,9 +35,14 @@ export function middleware(req: NextRequest) {
     // MULTI TENANT MODE: Use hostname to determine tenant
     // IF HOST IS NOT ROOT DOMAIN
     if (!isRootDomain && hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN) {
+        // Extract subdomain slug from hostname
+        // e.g., "laway-sda.ourfaithhub.com" -> "laway-sda"
+        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "ourfaithhub.com";
+        const tenantSlug = hostname.replace(`.${rootDomain}`, "");
+
         // Dynamic Tenant Routing
         return NextResponse.rewrite(
-            new URL(`/${hostname}${path}`, req.url)
+            new URL(`/${tenantSlug}${path}`, req.url)
         );
     }
 
