@@ -1,6 +1,7 @@
 "use server";
 
-import { BulletinItem, ChurchEvent, MemberProfile, ScheduleItem, WorshipServiceData, DevotionalContent } from "@/types/member-app";
+import { BulletinItem, ChurchEvent, MemberProfile, ScheduleItem, WorshipServiceData, DevotionalContent, NotificationItem } from "@/types/member-app";
+import { db as prisma } from "@/lib/db";
 
 // Simulate network delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -9,7 +10,9 @@ export async function getMemberProfile(): Promise<MemberProfile> {
     await delay(500);
     return {
         id: "mem_123",
-        name: "Russell Famisaran",
+        firstName: "Russell",
+        lastName: "Famisaran",
+        email: "russell.famisaran@example.com",
         role: "officer",
         church: "Batangas City Central",
         avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Russell"
@@ -17,86 +20,149 @@ export async function getMemberProfile(): Promise<MemberProfile> {
 }
 
 export async function getSabbathSchedule(): Promise<ScheduleItem[]> {
-    await delay(800);
-    return [
-        {
-            id: "1",
-            time: "08:30",
-            title: "Sabbath School",
-            description: "Superintendent: Sis. Maria Santos",
-            type: "sabbath_school"
+    const tenantId = await getTenantId();
+    if (!tenantId) return [];
+
+    // Find next Sabbath
+    const today = new Date();
+    const day = today.getDay();
+    const daysUntilSabbath = (6 - day + 7) % 7;
+    const nextSabbath = new Date(today);
+    nextSabbath.setDate(today.getDate() + daysUntilSabbath);
+    nextSabbath.setHours(0, 0, 0, 0);
+
+    const endSabbath = new Date(nextSabbath);
+    endSabbath.setHours(23, 59, 59, 999);
+
+    const plans = await prisma.servicePlan.findMany({
+        where: {
+            tenantId,
+            date: {
+                gte: nextSabbath,
+                lte: endSabbath
+            }
         },
-        {
-            id: "2",
-            time: "09:30",
-            title: "Lesson Study",
-            description: "Lesson 4: Psalms of Deliverance",
-            details: "Separation by Classes",
-            type: "sabbath_school"
-        },
-        {
-            id: "3",
-            time: "10:45",
-            title: "Divine Worship",
-            description: "Speaker: Pr. Jun Cruz (SCLC)",
-            details: "Topic: Faith in the Fire",
-            type: "divine_service"
-        },
-        {
-            id: "4",
-            time: "16:00",
-            title: "Adventist Youth (AY)",
-            description: "Host: Youth Department",
-            type: "ay"
-        }
-    ];
+        orderBy: { date: 'asc' } // or type priority
+    });
+
+    const schedule: ScheduleItem[] = [];
+
+    // Map ServicePlans to ScheduleItems
+    // This assumes specific types define the order: Sabbath School -> Divine Service -> AY
+    // We might want to sort by time if we had it in the plan, but plan has items with time.
+
+    // Flatten all items from all plans for the day
+    plans.forEach(plan => {
+        const type = plan.type === 'divine_worship' ? 'divine_service' : plan.type; // Map type
+
+        // Items are stored as JSON, we trust they match the structure
+        const items = (plan.items as any[]) || [];
+
+        items.forEach((item: any, index: number) => {
+            schedule.push({
+                id: `${plan.id}-${index}`,
+                time: item.time,
+                title: item.title,
+                description: item.presenter || item.description,
+                details: item.description, // Mapping description to details for extra info
+                type: type as any
+            });
+        });
+    });
+
+    // If no schedule found, return mock fallback
+    // Fallback Schedule
+    if (schedule.length === 0) {
+        return [
+            {
+                id: "default-ss-1",
+                time: "08:30",
+                title: "Sabbath School",
+                description: "Superintendent",
+                details: "Start of Services",
+                type: "sabbath_school"
+            },
+            {
+                id: "default-ss-2",
+                time: "09:30",
+                title: "Lesson Study",
+                description: "Lesson Review",
+                details: "Separation by Classes",
+                type: "sabbath_school"
+            },
+            {
+                id: "default-ds-1",
+                time: "10:45",
+                title: "Divine Worship",
+                description: "Speaker",
+                details: "Topic",
+                type: "divine_service"
+            },
+            {
+                id: "default-ay-1",
+                time: "16:00",
+                title: "Adventist Youth (AY)",
+                description: "Host: Youth Department",
+                details: "Afternoon Program",
+                type: "ay"
+            }
+        ];
+    }
+
+    return schedule.sort((a, b) => a.time.localeCompare(b.time));
 }
 
 export async function getBulletins(): Promise<BulletinItem[]> {
-    await delay(600);
-    return [
-        {
-            id: "b1",
-            title: "Dorcas Society Meeting",
-            content: "There will be a brief meeting after the Potluck lunch for all Dorcas members.",
-            date: "Today",
-            priority: "normal"
-        },
-        {
-            id: "b2",
-            title: "Emergency Drilling",
-            content: "Please be advised that we will have a fire drill next Sabbath.",
-            date: "Next Week",
-            priority: "high"
-        }
-    ];
+    const tenantId = await getTenantId();
+    if (!tenantId) return [];
+
+    const bulletins = await prisma.bulletin.findMany({
+        where: { tenantId },
+        orderBy: { date: 'desc' },
+        take: 10
+    });
+
+    return bulletins.map(b => ({
+        id: b.id,
+        title: b.title,
+        content: "Click to open bulletin", // Description is optional or contained in file
+        date: b.date.toLocaleDateString(),
+        priority: 'normal',
+        fileUrl: b.fileUrl // We'll need to add this to BulletinItem type if not exists, or handle in UI
+        // Note: BulletinItem definition in types/member-app might need update to support fileUrl
+    }));
 }
 
 export async function getUpcomingEvents(): Promise<ChurchEvent[]> {
-    await delay(700);
-    return [
-        {
-            id: "e1",
-            title: "District Fellowship",
-            date: "Feb 15, 2026",
-            time: "8:00 AM",
-            location: "Batangas City Convention Center",
-            description: "Joint worship service for all district churches.",
-            imageUrl: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?q=80&w=2670&auto=format&fit=crop"
+    const tenantId = await getTenantId();
+    if (!tenantId) return [];
+
+    const events = await prisma.event.findMany({
+        where: {
+            tenantId,
+            status: 'PUBLISHED',
+            startDate: { gte: new Date() }
         },
-        {
-            id: "e2",
-            title: "Health Expo",
-            date: "Mar 01, 2026",
-            time: "1:00 PM",
-            location: "Plaza Mabini",
-            description: "Free medical checkups and lifestyle counseling.",
-            imageUrl: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?q=80&w=2670&auto=format&fit=crop"
-        }
-    ];
+        orderBy: { startDate: 'asc' },
+        take: 5
+    });
+
+    return events.map(e => ({
+        id: e.id,
+        title: e.title,
+        date: e.startDate.toLocaleDateString(),
+        time: e.startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        location: e.location || 'TBA',
+        description: e.description || '',
+        imageUrl: (e.pageConfig as any)?.imageUrl || "https://images.unsplash.com/photo-1511632765486-a01980e01a18?q=80&w=2670&auto=format&fit=crop",
+        requiresRsvp: false // Default for now
+    }));
 }
 
 export async function getWorshipData(): Promise<WorshipServiceData> {
+    // This is typically the "Divine Worship" plan.
+    // We can fetch it similarly to getSabbathSchedule but specifically separate it.
+    // For now keeping mock to avoid breaking "Worship" mode if it relies on specific structure not yet in ServicePlan
     await delay(500);
     return {
         preacher: "Pr. Jun Cruz (SCLC)",
@@ -159,11 +225,40 @@ export async function getDailyDevotional(type: 'morning' | 'evening'): Promise<D
     }
 }
 
-export async function submitOffering(breakdown: Record<string, number>) {
-    await delay(1500);
+
+
+async function getTenantId() {
+    // In a real app, this would be fetched from the session or request headers (subdomain)
+    // For this demo, we'll return a hardcoded ID for 'batangas' to match Officer Portal
+    const tenant = await prisma.tenant.findUnique({
+        where: { slug: 'batangas' }
+    });
+    return tenant?.id;
+}
+
+export async function submitOffering(breakdown: Record<string, number>, proof: string) {
+    const tenantId = await getTenantId();
+    if (!tenantId) return { success: false, message: "Unauthorized" };
+
+    const member = await getMemberProfile();
     const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
-    console.log(`Processing offering breakdown:`, breakdown, `Total: ${total}`);
-    return { success: true, transactionId: "txn_" + Date.now() };
+
+    try {
+        await prisma.offering.create({
+            data: {
+                tenantId,
+                memberId: member.id,
+                amount: total,
+                breakdown,
+                proof,
+                status: "PENDING"
+            }
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to submit offering:", error);
+        return { success: false, message: "Failed to submit offering" };
+    }
 }
 
 export async function verifyOfficerPin(pin: string): Promise<boolean> {

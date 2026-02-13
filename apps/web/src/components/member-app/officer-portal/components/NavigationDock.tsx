@@ -1,4 +1,4 @@
-import { Activity, Users, Layers, Briefcase, LogOut } from 'lucide-react';
+import { Activity, Users, Layers, Briefcase, LogOut, Banknote, Megaphone } from 'lucide-react';
 
 interface NavButtonProps {
     icon: any;
@@ -47,6 +47,18 @@ export const NavigationDock = ({ view, setView }: { view: string, setView: (v: s
                     label="Admin"
                     active={view === 'admin'}
                     onClick={() => setView('admin')}
+                />
+                <NavButton
+                    icon={Megaphone}
+                    label="Comms"
+                    active={view === 'communications'}
+                    onClick={() => setView('communications')}
+                />
+                <NavButton
+                    icon={Banknote}
+                    label="Finance"
+                    active={view === 'treasury'}
+                    onClick={() => setView('treasury')}
                 />
                 <div className="w-[1px] h-8 bg-white/10 mx-1"></div>
                 <NavButton

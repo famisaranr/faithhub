@@ -4,7 +4,11 @@ import { BulletinItem } from "@/types/member-app";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const Announcements = () => {
+interface AnnouncementsProps {
+    onOpenBulletin?: () => void;
+}
+
+export const Announcements = ({ onOpenBulletin }: AnnouncementsProps) => {
     const [bulletins, setBulletins] = useState<BulletinItem[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -42,7 +46,11 @@ export const Announcements = () => {
             <h3 className="font-bold text-slate-900 text-lg mb-4">Bulletins</h3>
             <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x">
                 {bulletins.map((item) => (
-                    <div key={item.id} className="snap-center min-w-[260px] bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <div
+                        key={item.id}
+                        className="snap-center min-w-[260px] bg-white p-4 rounded-xl border border-slate-100 shadow-sm active:scale-95 transition-transform cursor-pointer"
+                        onClick={onOpenBulletin}
+                    >
                         <span className={cn(
                             "text-[10px] font-bold tracking-wider uppercase",
                             item.priority === 'high' ? "text-red-600" : "text-[#005f9e]"

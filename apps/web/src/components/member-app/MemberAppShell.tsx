@@ -21,8 +21,10 @@ import { BibleModal } from "./modals/BibleModal";
 import { LessonModal } from "./modals/LessonModal";
 import { AudioModal } from "./modals/AudioModal";
 import { HymnalModal } from "./modals/HymnalModal";
+import { BulletinModal } from "./modals/BulletinModal";
 import { SabbathOverlay } from "./SabbathOverlay";
 import { Tenant } from "./types";
+import { useSabbathProtocol } from "./hooks/useSabbathProtocol";
 
 interface MemberAppShellProps {
     onLaunchCentennial?: () => void;
@@ -31,8 +33,16 @@ interface MemberAppShellProps {
 
 export const MemberAppShell = ({ onLaunchCentennial, tenant }: MemberAppShellProps) => {
     const [activeModal, setActiveModal] = useState<ModalType>(null);
-    const [sabbathStage, setSabbathStage] = useState<SabbathStage | null>(null);
     const [profileTab, setProfileTab] = useState<'main' | 'notifications' | 'account' | 'settings'>('main');
+
+    // Intelligent Sabbath Protocol
+    const automatedStage = useSabbathProtocol();
+    // We can still allow manual override for dev/testing if we kept a separate state, 
+    // but the requirement is to make it built-in.
+    // Let's use the automated stage.
+    // If we wanted to keep the simulator hidden, we could uncomment the manual state.
+    // const [manualStage, setManualStage] = useState<SabbathStage | null>(null); 
+    const sabbathStage = automatedStage;
 
     const openModal = (id: ModalType) => {
         setProfileTab('main'); // Reset profile tab when opening generic modals
@@ -57,13 +67,14 @@ export const MemberAppShell = ({ onLaunchCentennial, tenant }: MemberAppShellPro
             {/* Main Scrollable Content */}
             <main className="flex-1 overflow-y-auto pb-24 px-4 pt-4 hide-scrollbar">
 
-                <SunsetWidget onStageChange={setSabbathStage} stage={sabbathStage} />
+                {/* Pass the active stage to SunsetWidget so it syncs up */}
+                <SunsetWidget onStageChange={() => { }} stage={sabbathStage} />
 
                 <QuickActions onOpenModal={openModal} onLaunchCentennial={onLaunchCentennial} />
 
                 <SabbathSchedule onOpenLesson={() => openModal('lesson')} />
 
-                <Announcements />
+                <Announcements onOpenBulletin={() => openModal('bulletin')} />
 
                 {/* Branding Footer */}
                 <div className="mt-8 mb-6 flex justify-center opacity-60 hover:opacity-100 transition active:scale-95">
@@ -75,23 +86,22 @@ export const MemberAppShell = ({ onLaunchCentennial, tenant }: MemberAppShellPro
                     </div>
                 </div>
 
-                {/* PROTOCOL TEST CONTROLS (Dev Only) */}
-                <div className="mt-8 p-4 border-t border-slate-200 text-center">
-                    <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-4">-- Sabbath Protocol Simulator --</p>
-                    <div className="flex flex-wrap justify-center gap-2">
-                        <button onClick={() => setSabbathStage('prep')} className="px-3 py-2 bg-slate-200 rounded text-[10px] font-bold text-slate-600">30m: Prep</button>
-                        <button onClick={() => setSabbathStage('ready')} className="px-3 py-2 bg-yellow-100 rounded text-[10px] font-bold text-yellow-700">18m: Ready</button>
-                        <button onClick={() => setSabbathStage('warning')} className="px-3 py-2 bg-orange-100 rounded text-[10px] font-bold text-orange-700">5m: Warning</button>
-                        <button onClick={() => setSabbathStage('sabbath')} className="px-3 py-2 bg-indigo-100 rounded text-[10px] font-bold text-indigo-700">0m: Sunset</button>
-                    </div>
-                </div>
+                {/* PROTOCOL TEST CONTROLS - REMOVED for Automated Production Use */}
+
             </main>
 
             {/* Bottom Nav */}
             <BottomNav onOpenModal={openModal} onHome={closeModal} />
 
             {/* Overlays & Modals */}
-            <SabbathOverlay stage={sabbathStage} onDismiss={() => setSabbathStage(null)} />
+            {/* The overlay will now appear automatically based on time */}
+            <SabbathOverlay stage={sabbathStage} onDismiss={() => {
+                // If dismissed, maybe we temporarily silence it?
+                // For now, simpler implementation: just hide visually until next stage change triggers re-render?
+                // Actually, SabbathOverlay handles its own visibility state (see visible state in SabbathOverlay).
+                // But it resets when stage changes. 
+                // So calling onDismiss just closes the current popup. Correct.
+            }} />
 
             {activeModal === 'giving' && <GivingModal isOpen={true} onClose={closeModal} />}
             {activeModal === 'worship' && <WorshipModal isOpen={true} onClose={closeModal} />}
@@ -103,7 +113,9 @@ export const MemberAppShell = ({ onLaunchCentennial, tenant }: MemberAppShellPro
             {activeModal === 'lesson' && <LessonModal isOpen={true} onClose={closeModal} />}
             {activeModal === 'audio' && <AudioModal isOpen={true} onClose={closeModal} />}
             {activeModal === 'hymnal' && <HymnalModal isOpen={true} onClose={closeModal} />}
+            {activeModal === 'bulletin' && <BulletinModal isOpen={true} onClose={closeModal} />}
 
         </div>
     );
 }
+

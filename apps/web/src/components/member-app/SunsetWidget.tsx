@@ -18,9 +18,9 @@ export const SunsetWidget = ({ onStageChange, stage }: SunsetWidgetProps) => {
             const now = new Date();
 
 
-            // Calculate time until 6:02 PM today (mock)
+            // Calculate time until 6:00 PM today (mock) to match Protocol Hook
             const sunset = new Date();
-            sunset.setHours(18, 2, 0, 0);
+            sunset.setHours(18, 0, 0, 0);
 
             if (now > sunset) {
                 // If past sunset, show countdown to next day sunset? Or just 00:00:00

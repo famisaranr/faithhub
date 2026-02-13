@@ -20,6 +20,48 @@ export const ProfileModal = ({ isOpen, onClose, initialTab = 'main' }: ProfileMo
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
+    // Settings State
+    const [darkMode, setDarkMode] = useState(false);
+    const [pushEnabled, setPushEnabled] = useState(false);
+
+    useEffect(() => {
+        // Load settings from localStorage
+        const storedDarkMode = localStorage.getItem('darkMode') === 'true';
+        const storedPush = localStorage.getItem('pushEnabled') === 'true';
+
+        setDarkMode(storedDarkMode);
+        setPushEnabled(storedPush);
+
+        // Apply dark mode if needed (assuming 'dark' class on html element)
+        if (storedDarkMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }, []);
+
+    const toggleDarkMode = () => {
+        const newValue = !darkMode;
+        setDarkMode(newValue);
+        localStorage.setItem('darkMode', String(newValue));
+        if (newValue) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    };
+
+    const togglePush = () => {
+        const newValue = !pushEnabled;
+        setPushEnabled(newValue);
+        localStorage.setItem('pushEnabled', String(newValue));
+        if (newValue) {
+            toast.success("Push notifications enabled");
+        } else {
+            toast.info("Push notifications disabled");
+        }
+    };
+
     useEffect(() => {
         if (isOpen) {
             setView(initialTab);
@@ -70,7 +112,10 @@ export const ProfileModal = ({ isOpen, onClose, initialTab = 'main' }: ProfileMo
         setIsLoading(true);
         try {
             await logout();
+            toast.success("Signed out successfully");
             onClose();
+            // Optional: Redirect to login or home if needed
+            // window.location.href = '/login'; 
         } catch (error) {
             console.error("Logout failed", error);
             toast.error("Failed to sign out");
@@ -266,8 +311,11 @@ export const ProfileModal = ({ isOpen, onClose, initialTab = 'main' }: ProfileMo
                                     <h4 className="font-medium text-slate-900">Push Notifications</h4>
                                     <p className="text-xs text-slate-500">Receive alerts about church events</p>
                                 </div>
-                                <div className="w-11 h-6 bg-[#005f9e] rounded-full relative cursor-pointer">
-                                    <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                                <div
+                                    className={`w-11 h-6 rounded-full relative cursor-pointer transition-colors ${pushEnabled ? 'bg-[#005f9e]' : 'bg-slate-200'}`}
+                                    onClick={togglePush}
+                                >
+                                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${pushEnabled ? 'translate-x-6' : 'translate-x-1'}`}></div>
                                 </div>
                             </div>
 
@@ -276,8 +324,11 @@ export const ProfileModal = ({ isOpen, onClose, initialTab = 'main' }: ProfileMo
                                     <h4 className="font-medium text-slate-900">Dark Mode</h4>
                                     <p className="text-xs text-slate-500">Adjust app appearance</p>
                                 </div>
-                                <div className="w-11 h-6 bg-slate-200 rounded-full relative cursor-pointer">
-                                    <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                                <div
+                                    className={`w-11 h-6 rounded-full relative cursor-pointer transition-colors ${darkMode ? 'bg-[#005f9e]' : 'bg-slate-200'}`}
+                                    onClick={toggleDarkMode}
+                                >
+                                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${darkMode ? 'translate-x-6' : 'translate-x-1'}`}></div>
                                 </div>
                             </div>
 

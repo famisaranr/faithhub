@@ -7,7 +7,7 @@ export const SABBATH_STAGES = {
     'sabbath': { colorClass: 'from-indigo-900 to-purple-800', statusText: 'Sabbath Entered', subText: 'Holy Time', timer: '00:00:00', progress: '100%', progressColor: 'bg-indigo-300', toast: null }
 };
 
-export type ModalType = 'giving' | 'bible' | 'lesson' | 'audio' | 'hymnal' | 'worship' | 'tech-prep' | 'officer' | 'events' | 'profile' | null;
+export type ModalType = 'giving' | 'bible' | 'lesson' | 'audio' | 'hymnal' | 'worship' | 'tech-prep' | 'officer' | 'events' | 'profile' | 'bulletin' | null;
 
 export interface Tenant {
     id: string;

@@ -22,6 +22,9 @@ model Tenant {
   inventory    InventoryItem[]
   alerts       OfficerAlert[]
   imports      ImportLog[]
+  givingConfig Json?
+  offerings    Offering[]
+  bulletins    Bulletin[]
 }
 
 model Member {
@@ -38,6 +41,7 @@ model Member {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  offerings Offering[]
 
   @@index([tenantId])
 }
@@ -166,4 +170,33 @@ model Recording {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   hymn        Hymn     @relation(fields: [hymnId], references: [hymnId])
+}
+
+model Offering {
+  id        String   @id @default(cuid())
+  tenantId  String
+  memberId  String?
+  amount    Float
+  breakdown Json
+  proof     String   @db.Text // Base64 image string
+  status    String   @default("PENDING") // PENDING, APPROVED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  member    Member?  @relation(fields: [memberId], references: [id])
+
+  @@index([tenantId])
+}
+
+model Bulletin {
+  id        String   @id @default(cuid())
+  tenantId  String
+  title     String
+  date      DateTime
+  fileUrl   String   @db.Text // Base64 or URL
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
 }

@@ -4,7 +4,7 @@ FROM node:20-bookworm-slim AS base
 WORKDIR /repo
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 RUN apt-get update -y && apt-get install -y openssl
 
 FROM base AS prune
@@ -40,7 +40,9 @@ COPY --from=build --chown=nextjs:nextjs /app/apps/web/.next/standalone ./
 COPY --from=build --chown=nextjs:nextjs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build --chown=nextjs:nextjs /app/apps/web/public ./apps/web/public
 COPY --from=build --chown=nextjs:nextjs /app/apps/web/prisma ./apps/web/prisma
+COPY --from=build --chown=nextjs:nextjs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build --chown=nextjs:nextjs /app/apps/web/package.json ./apps/web/package.json
+COPY --from=build --chown=nextjs:nextjs /app/pnpm-lock.yaml ./pnpm-lock.yaml
 
 EXPOSE 3000
-CMD ["node", "apps/web/server.js"]
+CMD cd apps/web && pnpm prisma migrate deploy && pnpm prisma db seed && cd ../.. && node apps/web/server.js

@@ -34,6 +34,7 @@ export interface BulletinItem {
     content: string;
     date: string;
     priority: "high" | "normal";
+    fileUrl?: string;
 }
 
 export interface ChurchEvent {

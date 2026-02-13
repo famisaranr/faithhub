@@ -3,7 +3,7 @@
 import { db as prisma } from '@/lib/db'; // Assuming generic prisma client export
 import { InventoryItem, Member, OfficerAlert, ServicePlan } from '@prisma/client';
 
-const FIXED_TENANT_SLUG = 'batangas-city-central';
+const FIXED_TENANT_SLUG = 'batangas';
 
 async function getTenantId() {
     const tenant = await prisma.tenant.findUnique({
@@ -13,7 +13,19 @@ async function getTenantId() {
     return tenant?.id;
 }
 
+function officerPortalKillSwitch() {
+    // Default to DISABLED in production for safety until Auth/RBAC is fully implemented.
+    // Set OFFICER_PORTAL_MODE="enabled" in .env only after securing these endpoints.
+    const mode = process.env.OFFICER_PORTAL_MODE ?? "disabled";
+
+    if (mode !== "enabled") {
+        console.warn(`[Security] Blocked access to Officer Portal action. Mode: ${mode}`);
+        throw new Error("Officer Portal is currently disabled for security maintenance.");
+    }
+}
+
 export async function getOfficerDashboardMetrics() {
+    officerPortalKillSwitch();
     const tenantId = await getTenantId();
     if (!tenantId) return null;
 
@@ -42,6 +54,7 @@ export async function getOfficerDashboardMetrics() {
 }
 
 export async function getMembers(query: string = '', statusFilter: string = 'all'): Promise<Member[]> {
+    officerPortalKillSwitch();
     const tenantId = await getTenantId();
     if (!tenantId) return [];
 
@@ -62,6 +75,7 @@ export async function getMembers(query: string = '', statusFilter: string = 'all
 }
 
 export async function getServicePlans(targetDate?: Date): Promise<ServicePlan[]> {
+    officerPortalKillSwitch();
     const tenantId = await getTenantId();
     if (!tenantId) return [];
 
@@ -95,6 +109,7 @@ export async function getServicePlans(targetDate?: Date): Promise<ServicePlan[]>
 }
 
 export async function getInventory(): Promise<InventoryItem[]> {
+    officerPortalKillSwitch();
     const tenantId = await getTenantId();
     if (!tenantId) return [];
 
@@ -105,6 +120,7 @@ export async function getInventory(): Promise<InventoryItem[]> {
 }
 
 export async function markAlertRead(alertId: string) {
+    officerPortalKillSwitch();
     const tenantId = await getTenantId();
     if (!tenantId) return;
 
@@ -138,6 +154,7 @@ export async function ingestServicePlans(
     filename: string,
     dryRun: boolean = true
 ): Promise<IngestResult> {
+    officerPortalKillSwitch();
     const tenantId = await getTenantId();
     if (!tenantId) return { success: false, message: "Unauthorized" };
 
@@ -251,5 +268,195 @@ export async function ingestServicePlans(
     } catch (error) {
         console.error("Ingest Error", error);
         return { success: false, message: "Database commit failed.", warnings: [(error as Error).message] };
+    }
+}
+
+// --- Treasury / Giving Configuration ---
+
+export async function getGivingConfig() {
+    officerPortalKillSwitch();
+    const tenantId = await getTenantId();
+    if (!tenantId) return null;
+
+    const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { givingConfig: true }
+    });
+
+    return tenant?.givingConfig;
+}
+
+export async function updateGivingConfig(config: any) {
+    officerPortalKillSwitch();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { success: false, message: "Unauthorized" };
+
+    try {
+        await prisma.tenant.update({
+            where: { id: tenantId },
+            data: { givingConfig: config }
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to update giving config", error);
+        return { success: false, message: "Failed to update configuration" };
+    }
+}
+
+// --- Pending Offerings ---
+
+export async function getPendingOfferings() {
+    officerPortalKillSwitch();
+    const tenantId = await getTenantId();
+    if (!tenantId) return [];
+
+    const offerings = await prisma.offering.findMany({
+        where: {
+            tenantId,
+            status: 'PENDING'
+        },
+        include: {
+            member: {
+                select: { name: true }
+            }
+        },
+        orderBy: {
+            createdAt: 'desc'
+        }
+    });
+
+    return offerings;
+}
+
+export async function approveOffering(id: string) {
+    officerPortalKillSwitch();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { success: false, message: "Unauthorized" };
+
+    try {
+        await prisma.offering.update({
+            where: {
+                id,
+                tenantId // Ensure tenant isolation
+            },
+            data: { status: 'APPROVED' }
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to approve offering", error);
+        return { success: false, message: "Failed to approve offering" };
+    }
+}
+
+// --- Dynamic Content Management (Bulletins & Events) ---
+
+// Bulletins
+export async function getBulletins() {
+    officerPortalKillSwitch();
+    const tenantId = await getTenantId();
+    if (!tenantId) return [];
+
+    return prisma.bulletin.findMany({
+        where: { tenantId },
+        orderBy: { date: 'desc' }
+    });
+}
+
+export async function createBulletin(data: { title: string; date: Date; fileUrl: string }) {
+    officerPortalKillSwitch();
+    console.log('[createBulletin] Starting creation...', data);
+    const tenantId = await getTenantId();
+    console.log('[createBulletin] Tenant ID:', tenantId);
+
+    if (!tenantId) {
+        console.error('[createBulletin] Unauthorized: No Tenant ID found');
+        return { success: false, message: "Unauthorized" };
+    }
+
+    try {
+        const result = await prisma.bulletin.create({
+            data: {
+                tenantId,
+                title: data.title,
+                date: data.date,
+                fileUrl: data.fileUrl
+            }
+        });
+        console.log('[createBulletin] Success:', result.id);
+        return { success: true };
+    } catch (error) {
+        console.error("[createBulletin] Failed to create bulletin", error);
+        return { success: false, message: "Failed to create bulletin: " + (error as Error).message };
+    }
+}
+
+export async function deleteBulletin(id: string) {
+    officerPortalKillSwitch();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { success: false, message: "Unauthorized" };
+
+    try {
+        await prisma.bulletin.delete({
+            where: { id, tenantId }
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete bulletin", error);
+        return { success: false, message: "Failed to delete bulletin" };
+    }
+}
+
+// Events
+export async function getEvents() {
+    officerPortalKillSwitch();
+    const tenantId = await getTenantId();
+    if (!tenantId) return [];
+
+    return prisma.event.findMany({
+        where: { tenantId, status: { not: 'ARCHIVED' } },
+        orderBy: { startDate: 'asc' }
+    });
+}
+
+export async function createEvent(data: {
+    title: string;
+    description?: string;
+    startDate: Date;
+    endDate?: Date;
+    location?: string;
+    slug: string;
+}) {
+    officerPortalKillSwitch();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { success: false, message: "Unauthorized" };
+
+    try {
+        await prisma.event.create({
+            data: {
+                tenantId,
+                ...data,
+                status: 'PUBLISHED'
+            }
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to create event", error);
+        return { success: false, message: "Failed to create event" };
+    }
+}
+
+export async function deleteEvent(id: string) {
+    officerPortalKillSwitch();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { success: false, message: "Unauthorized" };
+
+    try {
+        await prisma.event.delete({
+            where: { id, tenantId }
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete event", error);
+        return { success: false, message: "Failed to delete event" };
     }
 }

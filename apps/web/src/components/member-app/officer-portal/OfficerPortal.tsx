@@ -6,6 +6,8 @@ import { Dashboard } from "./views/Dashboard";
 import { Members, MemberData } from "./views/Members";
 import { Programming } from "./views/Programming";
 import { AdminLogistics } from "./views/AdminLogistics";
+import { Treasury } from "./views/Treasury";
+import { Communications } from "./views/Communications";
 import { MemberDetail } from "./components/MemberDetail";
 import { NavigationDock } from "./components/NavigationDock";
 import { verifyOfficerPin } from "@/app/actions/member";
@@ -16,7 +18,7 @@ interface OfficerPortalProps {
 }
 
 export const OfficerPortal = ({ onClose }: OfficerPortalProps) => {
-    const [view, setView] = useState('login'); // login, dashboard, members, programming, admin
+    const [view, setView] = useState('login'); // login, dashboard, members, programming, admin, treasury
     const [selectedMember, setSelectedMember] = useState<MemberData | null>(null);
     const [authStep, setAuthStep] = useState<'idle' | 'locating' | 'verifying' | 'success'>('idle');
     const [pin, setPin] = useState("");
@@ -36,16 +38,7 @@ export const OfficerPortal = ({ onClose }: OfficerPortalProps) => {
         setTimeout(() => {
             setAuthStep('verifying'); // In real app, we would verify Geofence here
 
-            // Step 2: Prompt for PIN (We integrate the existing PIN check here logically, 
-            // but for now let's keep the immersive flow and assume the PIN is the "Key" to start this sequence)
-            // Wait, the original modal asked for simple PIN. 
-            // Let's modify the flow: User clicks "Geo-Verify & Login" -> We ask for PIN inside the flow or before?
-
-            // For this prototype integration, let's keep it simple:
-            // The "Geo-Verify" button acts as the submit. 
-            // But we need the PIN input.
-
-            // Let's inject a PIN prompt into the login screen.
+            // Step 2: Prompt for PIN 
         }, 1200);
     };
 
@@ -178,7 +171,9 @@ export const OfficerPortal = ({ onClose }: OfficerPortalProps) => {
                 {view === 'dashboard' && <Dashboard setActiveView={setView} />}
                 {view === 'members' && <Members onSelectMember={setSelectedMember} />}
                 {view === 'programming' && <Programming />}
+                {view === 'communications' && <Communications />}
                 {view === 'admin' && <AdminLogistics />}
+                {view === 'treasury' && <Treasury />}
             </main>
 
             {/* Detail Overlay */}
