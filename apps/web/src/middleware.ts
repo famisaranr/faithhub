@@ -1,55 +1,43 @@
-// import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "ourfaithhub.com";
+
+function getHostname(req: NextRequest) {
+    return (req.headers.get("x-forwarded-host") || req.headers.get("host") || "")
+        .split(":")[0]
+        .toLowerCase();
+}
+
+function getTenantSlug(hostname: string) {
+    if (hostname === ROOT_DOMAIN) return null;
+
+    if (hostname.endsWith(`.${ROOT_DOMAIN}`)) {
+        return hostname.replace(`.${ROOT_DOMAIN}`, "");
+    }
+
+    // custom domains later: map hostname -> tenant
+    return null;
+}
 
 export function middleware(req: NextRequest) {
-    // export default clerkMiddleware(async (auth, req) => {
-    const url = req.nextUrl;
+    const res = NextResponse.next();
 
-    // Get hostname (e.g. events.faithhub.com or localhost:3000)
-    let hostname = req.headers.get("host")!;
-
-    // Handle localhost ports dynamically
-    const isLocalhost = hostname.includes("localhost");
-    const isRootDomain =
-        hostname === "faithhub.com" ||
-        (isLocalhost && !hostname.includes(".localhost")); // e.g. localhost:3000
-
-    // Normalize tenant domains for localhost
-    if (isLocalhost && hostname.includes(".localhost")) {
-        hostname = hostname.replace(/\.localhost(:\d+)?$/, `.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`);
+    // SINGLE TENANT MODE (optional fallback)
+    if (process.env.SINGLE_TENANT_SLUG) {
+        res.headers.set("x-tenant-slug", process.env.SINGLE_TENANT_SLUG);
+        return res;
     }
 
-    const searchParams = req.nextUrl.searchParams.toString();
-    const path = `${url.pathname}${searchParams.length > 0 ? `?${searchParams}` : ""}`;
+    const hostname = getHostname(req);
+    const tenantSlug = getTenantSlug(hostname);
 
-    // Rewrites for app pages
-    // SINGLE TENANT MODE: If SINGLE_TENANT_SLUG is set, force all traffic to that tenant
-    // SINGLE TENANT MODE: If SINGLE_TENANT_SLUG is set, force all traffic to that tenant
-    if (process.env.SINGLE_TENANT_SLUG && !path.startsWith("/landing")) {
-        return NextResponse.rewrite(
-            new URL(`/${process.env.SINGLE_TENANT_SLUG}${path}`, req.url)
-        );
+    if (tenantSlug) {
+        res.headers.set("x-tenant-slug", tenantSlug);
     }
 
-    // MULTI TENANT MODE: Use hostname to determine tenant
-    // IF HOST IS NOT ROOT DOMAIN
-    if (!isRootDomain && hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN) {
-        // Extract subdomain slug from hostname
-        // e.g., "laway-sda.ourfaithhub.com" -> "laway-sda"
-        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "ourfaithhub.com";
-        const tenantSlug = hostname.replace(`.${rootDomain}`, "");
-
-        // Dynamic Tenant Routing
-        return NextResponse.rewrite(
-            new URL(`/${tenantSlug}${path}`, req.url)
-        );
-    }
-
-    return NextResponse.next();
+    return res;
 }
-// });
 
 export const config = {
-    matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
+    matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
