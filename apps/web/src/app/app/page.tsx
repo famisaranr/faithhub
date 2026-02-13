@@ -3,38 +3,40 @@ import { TenantApp } from "@/components/TenantApp";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { Tenant } from "@/components/member-app/types";
+import { headers } from "next/headers";
 
 export const dynamic = 'force-dynamic';
 
-export default async function TenantPage({ params }: { params: Promise<{ host: string }> }) {
+export default async function AppPage() {
     try {
-        const { host } = await params;
-        console.log(`[TenantPage] Loading for host: ${host}`);
+        // Read tenant slug from header set by middleware
+        const headersList = await headers();
+        const tenantSlug = headersList.get("x-tenant-slug");
 
-        // Still using dev config for the marketing site part for now
+        if (!tenantSlug) {
+            // No tenant slug means this is accessed without proper routing
+            notFound();
+        }
+
+        console.log(`[AppPage] Loading tenant: ${tenantSlug}`);
+
         const config = DEV_CENTENNIAL_CONFIG;
-
         let tenant: Tenant | null = null;
         let dbErrorInstance: Error | null = null;
 
         try {
             tenant = await db.tenant.findUnique({
-                where: { slug: host },
+                where: { slug: tenantSlug },
             });
-            console.log(`[TenantPage] Found tenant: ${tenant?.slug} (ID: ${tenant?.id})`);
+            console.log(`[AppPage] Found tenant: ${tenant?.slug} (ID: ${tenant?.id})`);
         } catch (dbError) {
-            console.error("[TenantPage] Database query failed:", dbError);
+            console.error("[AppPage] Database query failed:", dbError);
             dbErrorInstance = dbError as Error;
-            // Continue to fallback checks
         }
 
-        // If we have a config, we can render in limited mode even if DB failed or tenant not found
-        // But if tenant was found, we pass it.
-        // If tenant NOT found and NO config (impossible here as config is hardcoded), we 404.
-
-        // For the specific case where DB failed (tenant is null) but we want to show Limited Mode:
+        // If tenant not found but we have config, show limited mode
         if (!tenant && config) {
-            console.log("[TenantPage] Rendering with Dev Config (Tenant not found or DB error)");
+            console.log("[AppPage] Rendering with Dev Config (Tenant not found or DB error)");
             return (
                 <div className="min-h-screen flex flex-col">
                     <div className="bg-yellow-500 text-black px-4 py-2 text-center text-sm font-bold">
@@ -57,7 +59,7 @@ export default async function TenantPage({ params }: { params: Promise<{ host: s
         return <TenantApp config={config} tenant={tenant} />;
 
     } catch (e) {
-        console.error("[TenantPage] Critical Error:", e);
+        console.error("[AppPage] Critical Error:", e);
         return (
             <div className="min-h-screen flex items-center justify-center p-8 text-center bg-slate-50">
                 <div className="max-w-md space-y-4">
